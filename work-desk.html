@@ -118,9 +118,13 @@ details.archive .tasks{margin-top:10px}
     <div class="row">
       <button class="primary" id="sortBtn">Sort it for me</button>
       <button id="addBtn">Add as written</button>
+      <button id="uploadBtn">Upload a document</button>
+      <input type="file" id="fileIn" multiple hidden accept=".pdf,.docx,.txt,.md,.csv,.eml,.rtf,.html,image/*">
       <span class="msg" id="capMsg" role="status"></span>
     </div>
-    <p class="hint">"Sort it for me" has Claude split it into tasks with a priority, due date, time estimate and first step. "Add as written" adds one task per line; start a line with ! to mark it urgent.</p>
+    <p class="hint"><b>To speak:</b> tap the box, then the microphone on your phone or computer keyboard, and talk. Then press "Sort it for me".</p>
+    <p class="hint"><b>Documents:</b> upload a PDF, Word document, text file or a photo of notes, and Claude pulls out the tasks. Files are read on your device and aren't stored.</p>
+    <p class="hint">"Sort it for me" has Claude split what you write into tasks with a priority, due date, time estimate and first step. "Add as written" adds one task per line; start a line with ! to mark it urgent.</p>
   </section>
 
   <section class="strip" aria-label="Where you are">
@@ -220,7 +224,7 @@ function render(){
   if (state.plan?.text) $("#planText").textContent = state.plan.text + (state.plan.date !== iso(new Date()) ? `\n\n(This plan is from ${state.plan.date}. Press "Plan my day" for a fresh one.)` : "");
   const noAI = !state.sample;
   $("#sortBtn").disabled = noAI || !state.canWrite; $("#planBtn").disabled = noAI || !state.canWrite;
-  $("#addBtn").disabled = !state.canWrite;
+  $("#addBtn").disabled = !state.canWrite; $("#uploadBtn").disabled = noAI || !state.canWrite;
 }
 const prio = t => ({high:3,med:2,low:1}[t.priority]||2);
 
@@ -280,23 +284,93 @@ $("#addBtn").onclick = async () => {
   $("#dump").value = ""; flash("#capMsg", `Added ${lines.length} task${lines.length>1?"s":""}.`);
 };
 
+const TASK_FORMAT = `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
+Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.`;
+
+async function extractTasks(prompt, opts = {}, source = ""){
+  const items = await state.sample.json(prompt, { modelTier: "default", ...opts });
+  if (!Array.isArray(items)) throw { code: "empty" };
+  for (const it of items) { if (source) it.notes = [it.notes, `From: ${source}`].filter(Boolean).join("\n"); await col().add(newTask(it)); }
+  return items.length;
+}
+const sampleErr = e => e.code==="not_granted" ? "Claude wasn't allowed to help. Allow it from the page's permissions and try again."
+  : e.code==="rate_limited" ? "Too many requests. Wait a minute and try again." : null;
+
 $("#sortBtn").onclick = async () => {
   const text = $("#dump").value.trim();
   if (!text) return flash("#capMsg","Write what's on your plate first.", true);
   $("#sortBtn").disabled = true; flash("#capMsg","Claude is sorting it…");
   try {
-    const items = await state.sample.json(
-`You turn a person's brain-dump of work into a clean task list. Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
-Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail from the dump or ""}.
-Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.
+    const n = await extractTasks(`You turn a person's brain-dump of work into a clean task list. Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
+${TASK_FORMAT}
 
 Brain-dump:
-${text}`, { modelTier: "default" });
-    if (!Array.isArray(items) || !items.length) throw { code: "empty" };
-    for (const it of items) await col().add(newTask(it));
-    $("#dump").value = ""; flash("#capMsg", `Added ${items.length} task${items.length>1?"s":""}.`);
-  } catch(e){ flash("#capMsg", e.code==="not_granted" ? "Claude wasn't allowed. Use \"Add as written\" instead." : e.code==="rate_limited" ? "Too many requests. Wait a minute and try again." : "Couldn't sort that. Try again or use \"Add as written\".", true); }
+${text}`);
+    if (!n) throw { code: "empty" };
+    $("#dump").value = ""; flash("#capMsg", `Added ${n} task${n>1?"s":""}.`);
+  } catch(e){ flash("#capMsg", sampleErr(e) || "Couldn't sort that. Try again or use \"Add as written\".", true); }
   finally { $("#sortBtn").disabled = false; }
+};
+
+/* ---------- documents ---------- */
+const loaded = {};
+function loadScript(src){
+  return loaded[src] ||= new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => { delete loaded[src]; fail(new Error("load")); }; document.head.append(s); });
+}
+async function pdfText(file){
+  const base = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  await loadScript(base + "pdf.min.js");
+  await loadScript(base + "pdf.worker.min.js"); // runs the PDF reader on the page itself
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), disableWorker: true }).promise;
+  const pages = [];
+  for (let i = 1; i <= Math.min(pdf.numPages, 60); i++) {
+    const c = await (await pdf.getPage(i)).getTextContent();
+    pages.push(c.items.map(it => it.str).join(" "));
+  }
+  return pages.join("\n\n");
+}
+async function docxText(file){
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+  return (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value;
+}
+async function readFile(file){
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith("image/")) return { image: file };
+  if (name.endsWith(".pdf")) return { text: await pdfText(file) };
+  if (name.endsWith(".docx")) return { text: await docxText(file) };
+  if (name.endsWith(".doc")) throw { code: "old_doc" };
+  return { text: await file.text() };
+}
+
+$("#uploadBtn").onclick = () => $("#fileIn").click();
+$("#fileIn").onchange = async () => {
+  const files = [...$("#fileIn").files]; $("#fileIn").value = "";
+  if (!files.length) return;
+  $("#uploadBtn").disabled = true;
+  let total = 0, failed = [];
+  for (const f of files) {
+    flash("#capMsg", `Reading ${f.name}…`);
+    try {
+      const got = await readFile(f);
+      const intro = `Below is a document the person uploaded ("${f.name}"). Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
+Pull out the work THEY need to do: action items, requests made of them, deadlines, follow-ups, things to prepare or reply to. Ignore background information that needs no action. If there is nothing to do, reply [].
+${TASK_FORMAT}`;
+      flash("#capMsg", `Claude is reading ${f.name}…`);
+      if (got.image) {
+        const lim = await state.sample.limits().catch(() => null);
+        if (!lim?.images) throw { code: "no_images" };
+        total += await extractTasks(intro + "\n\nThe document is the attached image.", { images: [got.image] }, f.name);
+      } else {
+        const text = (got.text || "").trim();
+        if (!text) throw { code: "no_text" };
+        total += await extractTasks(intro + "\n\nDocument:\n" + text.slice(0, 150000), {}, f.name);
+      }
+    } catch(e){
+      failed.push(f.name + ": " + (sampleErr(e) || {old_doc:"save it as .docx and try again", no_text:"no readable text (if it's a scan, upload a photo of it instead)", no_images:"photos can't be read here", empty:"Claude couldn't make sense of it"}[e.code] || "couldn't be read"));
+    }
+  }
+  $("#uploadBtn").disabled = false;
+  flash("#capMsg", `Added ${total} task${total===1?"":"s"} from ${files.length - failed.length} file${files.length-failed.length===1?"":"s"}.` + (failed.length ? " Problems: " + failed.join("; ") : ""), failed.length > 0);
 };
 
 $("#planBtn").onclick = async () => {
