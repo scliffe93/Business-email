@@ -506,8 +506,10 @@ function flash(sel, text, err){ const el = $(sel); el.textContent = text; el.cla
 $("#addBtn").onclick = async () => {
   const lines = $("#dump").value.split("\n").map(s => s.trim()).filter(Boolean);
   if (!lines.length) return flash("#capMsg","Write at least one task first.", true);
-  for (const l of lines) { const high = l.startsWith("!"); await col().add(newTask({ title: l.replace(/^!\s*/,""), priority: high?"high":"med" })); }
-  $("#dump").value = ""; flash("#capMsg", `Added ${lines.length} task${lines.length>1?"s":""}.`);
+  try {
+    for (const l of lines) { const high = l.startsWith("!"); await col().add(newTask({ title: l.replace(/^!\s*/,""), priority: high?"high":"med" })); }
+    $("#dump").value = ""; flash("#capMsg", `Added ${lines.length} task${lines.length>1?"s":""}.`);
+  } catch(e){ flash("#capMsg", "Couldn't save your tasks (" + (e.code || "error") + "). Your text is still in the box; try again.", true); }
 };
 
 const TASK_FORMAT = `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
