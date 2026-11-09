@@ -112,6 +112,20 @@ button.link:hover{color:var(--accent);background:var(--accent-soft)}
 .overview{grid-area:overview}
 @media (max-width:820px){.desk{grid-template-columns:minmax(0,1fr);grid-template-areas:"capture" "overview"}}
 
+/* weekly reports */
+.reports{padding:18px;display:flex;flex-direction:column;gap:14px}
+.rep-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.rep-top h2{font-size:1.3rem;font-weight:800}
+.nudge{background:var(--sun-soft);color:var(--sun-ink);border-radius:12px;padding:10px 14px;font-size:.9rem;font-weight:600}
+.rep{border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.rep summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:var(--raised);flex-wrap:wrap}
+.rep summary::-webkit-details-marker{display:none}
+.rep summary b{font-family:var(--f-display);font-size:1.02rem}
+.rep-stats{display:flex;gap:6px;flex-wrap:wrap}
+.rep-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.rep-body pre{white-space:pre-wrap;font-family:var(--f-body);margin:0;line-height:1.6;font-size:.92rem;overflow-wrap:anywhere}
+.rep-body .formbar span{font-size:.75rem;color:var(--muted)}
+
 /* capture */
 .capture{padding:18px;display:flex;flex-direction:column;gap:12px}
 .capture h3{font-size:1.05rem}
@@ -285,6 +299,16 @@ button.link:hover{color:var(--accent);background:var(--accent-soft)}
     </div>
     <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
     <div class="board" id="board"></div>
+  </section>
+
+  <section class="card reports" aria-labelledby="repH">
+    <div class="rep-top">
+      <div><div class="label">End of week</div><h2 id="repH">Weekly reports</h2></div>
+      <button class="primary" id="repBtn">Write this week's report</button>
+    </div>
+    <div class="nudge" id="repNudge" hidden>It's the end of the week. Write your report to see what you got done.</div>
+    <span class="msg" id="repMsg" role="status"></span>
+    <div id="repList"></div>
   </section>
 
   <div class="desk">
@@ -787,21 +811,108 @@ $("#say").addEventListener("input", e => { e.target.style.height = "auto"; e.tar
 $("#starters").addEventListener("click", e => { const b = e.target.closest(".starter"); if (!b) return; const s = b.dataset.say;
   if (s.endsWith(" ")) { $("#say").value = s; $("#say").focus(); } else talk(s); });
 
+/* ---------- weekly reports ---------- */
+state.reports = [];
+function weekInfo(d = new Date()){
+  const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const end = new Date(start.getTime() + 7*DAY);
+  const th = new Date(start.getTime() + 3*DAY), jan4 = new Date(th.getFullYear(), 0, 4);
+  const wk = 1 + Math.round(((th - jan4) / DAY - 3 + ((jan4.getDay() + 6) % 7)) / 7);
+  return { id: `${th.getFullYear()}-W${pad(wk)}`, start, end };
+}
+const inWeek = (s, w) => { const t = Date.parse(s || 0); return t >= w.start.getTime() && t < w.end.getTime(); };
+function weekFacts(w){
+  const done = state.tasks.filter(t => t.status === "done" && inWeek(t.closedAt, w));
+  const dropped = state.tasks.filter(t => t.status === "dropped" && inWeek(t.closedAt, w));
+  const open = state.tasks.filter(isOpen);
+  const moved = open.filter(t => (t.updates||[]).some(u => inWeek(u.at, w)));
+  const overdue = open.filter(t => t.due && daysFrom(t.due) < 0);
+  const nextWeekEnd = new Date(w.end.getTime() + 7*DAY);
+  const nextWeek = open.filter(t => { const d = parseDay(t.due); return d && d >= w.end && d < nextWeekEnd; });
+  return { done, dropped, open, moved, overdue, nextWeek };
+}
+const factLine = t => `- ${t.title} | ${STATUS[t.status]?.label || t.status} | ${t.status === "done" ? 100 : (t.progress||0)}%${t.due ? " | due " + t.due : ""}${t.waitingOn ? " | waiting on " + t.waitingOn : ""}${(t.updates||[]).length ? " | updates: " + t.updates.slice(-4).map(u => u.text).join(" / ").slice(0, 400) : ""}`;
+
+$("#repBtn").onclick = async () => {
+  if (!state.tasks.length) return flash("#repMsg", "There's nothing on your board yet, so there's nothing to report.", true);
+  const w = weekInfo(), f = weekFacts(w);
+  $("#repBtn").disabled = true; flash("#repMsg", "Claude is writing your report…");
+  const range = `${w.start.toLocaleDateString(undefined,{day:"numeric",month:"short"})} to ${new Date(w.end.getTime()-DAY).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}`;
+  try {
+    const { text } = await state.sample(
+`Write a short end-of-week work report for this person, for the week of ${range}. Plain text, no markdown symbols, no bold. Use these sections with these exact headings on their own lines:
+Summary (2-3 sentences: how the week went overall)
+Completed (every completed task, one line each, with a few words of what it involved if the updates say)
+Moved forward (open tasks that progressed this week, with progress and what's left)
+Waiting on others (who, and for what)
+Overdue or at risk
+Next week (what is due next week and what to tackle first)
+Dropped (only if any)
+Keep it factual and only use the information below. Under 350 words.
+
+Completed this week (${f.done.length}):
+${f.done.map(factLine).join("\n") || "(none)"}
+
+Dropped this week (${f.dropped.length}):
+${f.dropped.map(factLine).join("\n") || "(none)"}
+
+Open tasks with updates this week:
+${f.moved.map(factLine).join("\n") || "(none)"}
+
+All open tasks (${f.open.length}):
+${f.open.map(factLine).join("\n") || "(none)"}
+
+Due next week:
+${f.nextWeek.map(factLine).join("\n") || "(none)"}
+
+Current "where you're at" note: ${state.status?.text || "(none)"}`, { cache: false });
+    await state.db.doc("reports/" + w.id).set({ week: w.id, range, text, createdAt: new Date().toISOString(), by: "page",
+      stats: { completed: f.done.length, dropped: f.dropped.length, open: f.open.length, overdue: f.overdue.length } });
+    flash("#repMsg", "Report saved.");
+  } catch(e){ flash("#repMsg", sampleErr(e) || "Couldn't write the report. Try again.", true); }
+  finally { $("#repBtn").disabled = false; }
+};
+
+function renderReports(){
+  const w = weekInfo(), day = new Date().getDay(), have = state.reports.some(r => r.week === w.id);
+  $("#repNudge").hidden = have || !(day === 5 || day === 6 || day === 0) || !state.tasks.length;
+  $("#repBtn").textContent = have ? "Rewrite this week's report" : "Write this week's report";
+  $("#repBtn").disabled = !state.sample || !state.canWrite;
+  $("#repList").innerHTML = state.reports.length ? state.reports.map((r, i) => `<details class="rep" ${i===0?"open":""}>
+      <summary><b>Week of ${esc(r.range || r.week)}</b><span class="rep-stats">
+        <span class="chip" style="color:var(--ok)">${r.stats?.completed ?? 0} completed</span>
+        <span class="chip">${r.stats?.open ?? 0} still open</span>
+        ${r.stats?.overdue ? `<span class="chip hot">${r.stats.overdue} overdue</span>` : ""}</span></summary>
+      <div class="rep-body"><pre id="rep-${esc(r.week)}">${esc(r.text)}</pre>
+        <div class="formbar"><button type="button" data-copy="${esc(r.week)}">Copy report</button>
+        <span>Written ${new Date(r.createdAt).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}${r.by === "scheduled" ? " automatically" : ""}</span></div></div>
+    </details>`).join("")
+    : `<div class="empty-state">No reports yet. Every Friday afternoon a report of what you completed is written here automatically, or press the button to write one now.</div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  const pre = document.getElementById("rep-" + b.dataset.copy);
+  try { await navigator.clipboard.writeText(pre.textContent); b.textContent = "Copied"; }
+  catch { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent = "Selected: press Ctrl+C or Cmd+C"; }
+  setTimeout(() => b.textContent = "Copy report", 2500);
+});
+
 /* ---------- boot ---------- */
-render(); renderTalk();
+render(); renderTalk(); renderReports();
 (async () => {
   const timer = setTimeout(() => { $("#conn").textContent = "Can't reach your tasks yet. Check your connection."; }, 10000);
   const db = await claude.use("db");
   if (!db) { clearTimeout(timer); $("#conn").textContent = "Sign in to claude.ai to see and save your tasks."; state.canWrite = false; render(); return; }
   state.db = db;
   claude.use("user").then(async u => { if (u) { const c = await u.can("data.write"); if (c === false) { state.canWrite = false; render(); } } });
-  claude.use("sample").then(s => { state.sample = s; render(); renderTalk(state.pendingTalk); });
+  claude.use("sample").then(s => { state.sample = s; render(); renderTalk(state.pendingTalk); renderReports(); });
   db.collection("tasks").onSnapshot(snap => {
     if (!snap.metadata.fromCache) { clearTimeout(timer); $("#conn").textContent = "Saved and synced"; $("#conn").classList.add("ok"); }
     state.tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
+    render(); renderReports();
   }, err => { clearTimeout(timer); $("#conn").textContent = "Lost connection to your tasks. Reload the page to reconnect."; });
   db.doc("meta/plan").onSnapshot(s => { state.plan = s.exists ? s.data() : null; render(); }, () => {});
+  db.collection("reports").orderBy("week", "desc").limit(26).onSnapshot(snap => { state.reports = snap.docs.map(d => d.data()); renderReports(); }, () => {});
   db.doc("meta/status").onSnapshot(s => { state.status = s.exists ? s.data() : null; renderTalk(state.pendingTalk); }, () => {});
   db.collection("chat").orderBy("at", "desc").limit(80).onSnapshot(snap => {
     state.chat = snap.docs.map(d => d.data()).reverse(); renderTalk(state.pendingTalk);
