@@ -1,0 +1,378 @@
+<title>Work Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column — capture box, status strip, 14-day load, task groups, then the done/dropped archive. */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --ink:#1d2321; --muted:#5f6a66; --line:#d9ddd8;
+  --accent:#2f6b57; --accent-ink:#ffffff; --accent-soft:#e1ece6;
+  --hot:#b4432f; --hot-soft:#f6e3de; --warn:#9a6b12; --warn-soft:#f5ecd6; --ok:#2f6b57;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Public Sans", system-ui, -apple-system, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141816; --surface:#1c211f; --ink:#e7ebe8; --muted:#9aa5a0; --line:#2e3532;
+  --accent:#7cc3a6; --accent-ink:#0f1a15; --accent-soft:#213a30;
+  --hot:#ef8a74; --hot-soft:#3a221d; --warn:#e2b45a; --warn-soft:#33291a; --ok:#7cc3a6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141816; --surface:#1c211f; --ink:#e7ebe8; --muted:#9aa5a0; --line:#2e3532;
+  --accent:#7cc3a6; --accent-ink:#0f1a15; --accent-soft:#213a30;
+  --hot:#ef8a74; --hot-soft:#3a221d; --warn:#e2b45a; --warn-soft:#33291a; --ok:#7cc3a6; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:2rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:700}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+header p{margin:4px 0 0;color:var(--muted)}
+.status-line{font-size:.82rem;color:var(--muted)}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;font-weight:500}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:disabled{opacity:.55;cursor:default}
+button.link{border:none;background:none;padding:4px 6px;color:var(--muted);font-size:.85rem}
+button.link:hover{color:var(--ink)}
+
+/* capture */
+.capture{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.capture textarea{width:100%;min-height:110px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.capture .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.msg{font-size:.85rem;color:var(--muted)}
+.msg.err{color:var(--hot)}
+
+/* strip */
+.strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.stat{padding:12px 14px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.stat:first-child{border-left:none}
+.stat b{font-family:var(--f-display);font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat.hot b{color:var(--hot)} .stat.warn b{color:var(--warn)} .stat.ok b{color:var(--ok)}
+@media (max-width:620px){.strip{grid-template-columns:repeat(3,minmax(0,1fr))}.stat:nth-child(4){border-left:none}.stat:nth-child(n+4){border-top:1px solid var(--line)}}
+
+/* load chart */
+.load{display:flex;flex-direction:column;gap:8px}
+.bars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:4px;align-items:end;height:96px;border-bottom:1px solid var(--line)}
+.bar{background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.bar.over{background:var(--hot)}
+.bar.empty{background:var(--line)}
+.days{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:4px;font-size:.68rem;color:var(--muted);text-align:center}
+.days .today{color:var(--ink);font-weight:600}
+
+/* plan */
+.plan{background:var(--accent-soft);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.plan pre{white-space:pre-wrap;font-family:var(--f-body);margin:0;line-height:1.6}
+.sectionhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* groups */
+.group{display:flex;flex-direction:column;gap:8px}
+.group h2 .count{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);font-weight:400;margin-left:6px}
+.tasks{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.task{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:12px 14px;border-top:1px solid var(--line);align-items:start}
+.task:first-child{border-top:none}
+.task.pri-high{box-shadow:inset 3px 0 0 var(--hot)}
+.task.pri-med{box-shadow:inset 3px 0 0 var(--warn)}
+.check{width:20px;height:20px;margin-top:2px;accent-color:var(--accent)}
+.t-title{font-weight:600;overflow-wrap:anywhere}
+.t-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;align-items:center}
+.chip{font-size:.74rem;padding:1px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.hot{background:var(--hot-soft);color:var(--hot);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.doing{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.t-next{font-size:.86rem;color:var(--muted);margin-top:4px}
+.t-actions{display:flex;gap:2px;flex-wrap:wrap;justify-content:flex-end}
+.prep{grid-column:2 / 4;background:var(--bg);border-radius:10px;padding:10px 12px;font-size:.88rem}
+.prep pre{white-space:pre-wrap;font-family:var(--f-body);margin:0}
+.edit{grid-column:2 / 4;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.edit label{display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:var(--muted)}
+.edit input,.edit select,.edit textarea{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)}
+.edit .wide{grid-column:1 / -1}
+.empty-state{padding:18px;color:var(--muted);font-size:.9rem}
+details.archive summary{cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:1.05rem}
+details.archive .tasks{margin-top:10px}
+.task.closed .t-title{text-decoration:line-through;color:var(--muted)}
+@media (max-width:520px){.task{grid-template-columns:auto minmax(0,1fr)}.t-actions{grid-column:2;justify-content:flex-start}.prep,.edit{grid-column:1 / -1}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="label" id="todayLabel">Today</div>
+      <h1>Work Desk</h1>
+      <p>Dump what's on your plate. See what's left, what's done and what you've dropped.</p>
+    </div>
+    <div class="status-line" id="conn">Connecting…</div>
+  </header>
+
+  <section class="capture" aria-labelledby="capH">
+    <h2 id="capH">What's on your plate?</h2>
+    <textarea id="dump" placeholder="One thing per line, or just write it how you'd say it:&#10;Send Acme the revised quote by Thursday&#10;! Chase unpaid invoice from March&#10;Prep slides for Monday team meeting, about 2 hours"></textarea>
+    <div class="row">
+      <button class="primary" id="sortBtn">Sort it for me</button>
+      <button id="addBtn">Add as written</button>
+      <span class="msg" id="capMsg" role="status"></span>
+    </div>
+    <p class="hint">"Sort it for me" has Claude split it into tasks with a priority, due date, time estimate and first step. "Add as written" adds one task per line; start a line with ! to mark it urgent.</p>
+  </section>
+
+  <section class="strip" aria-label="Where you are">
+    <div class="stat hot"><span class="label">Overdue</span><b id="sOver">0</b></div>
+    <div class="stat warn"><span class="label">Due today</span><b id="sToday">0</b></div>
+    <div class="stat"><span class="label">This week</span><b id="sWeek">0</b></div>
+    <div class="stat"><span class="label">In progress</span><b id="sDoing">0</b></div>
+    <div class="stat ok"><span class="label">Done · 7 days</span><b id="sDone">0</b></div>
+    <div class="stat"><span class="label">Dropped</span><b id="sDrop">0</b></div>
+  </section>
+
+  <section class="load" aria-labelledby="loadH">
+    <div class="sectionhead"><h2 id="loadH">Next 14 days</h2><span class="hint" id="loadNote">Hours of open work by due date. Red is over 6 hours.</span></div>
+    <div class="bars" id="bars"></div>
+    <div class="days" id="days"></div>
+  </section>
+
+  <section class="plan" aria-labelledby="planH">
+    <div class="sectionhead">
+      <h2 id="planH">Today's plan</h2>
+      <button id="planBtn">Plan my day</button>
+    </div>
+    <pre id="planText">No plan yet. Press "Plan my day" and Claude will put your open tasks in order, with times, for today.</pre>
+    <span class="msg" id="planMsg" role="status"></span>
+  </section>
+
+  <div id="groups" class="wrap" style="gap:24px"></div>
+
+  <details class="archive">
+    <summary>Done and dropped <span class="mono" id="archCount"></span></summary>
+    <div class="tasks" id="archive"></div>
+  </details>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = { tasks: [], plan: null, db: null, sample: null, canWrite: true, openEdit: null, busy: new Set() };
+const DAY = 864e5;
+const pad = n => String(n).padStart(2,"0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const parseDay = s => { if(!s) return null; const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const daysFrom = s => { const d = parseDay(s); return d ? Math.round((d - today())/DAY) : null; };
+const fmtDue = s => {
+  const n = daysFrom(s); if (n === null) return "";
+  if (n < -1) return `${-n} days overdue`; if (n === -1) return "Due yesterday";
+  if (n === 0) return "Due today"; if (n === 1) return "Due tomorrow";
+  const d = parseDay(s);
+  return n < 7 ? `Due ${d.toLocaleDateString(undefined,{weekday:"long"})}` : `Due ${d.toLocaleDateString(undefined,{day:"numeric",month:"short"})}`;
+};
+const fmtEst = m => !m ? "" : m < 60 ? `${m} min` : `${(m/60).toFixed(m%60?1:0)} h`;
+const isOpen = t => t.status === "todo" || t.status === "doing";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+$("#todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+
+/* ---------- render ---------- */
+function render(){
+  const open = state.tasks.filter(isOpen);
+  const over = open.filter(t => (daysFrom(t.due) ?? 99) < 0);
+  const dueToday = open.filter(t => daysFrom(t.due) === 0);
+  const week = open.filter(t => { const n = daysFrom(t.due); return n !== null && n >= 1 && n <= 7; });
+  const later = open.filter(t => { const n = daysFrom(t.due); return n !== null && n > 7; });
+  const nodate = open.filter(t => !t.due);
+  const weekAgo = Date.now() - 7*DAY;
+  $("#sOver").textContent = over.length;
+  $("#sToday").textContent = dueToday.length;
+  $("#sWeek").textContent = week.length;
+  $("#sDoing").textContent = open.filter(t => t.status === "doing").length;
+  $("#sDone").textContent = state.tasks.filter(t => t.status === "done" && Date.parse(t.closedAt||0) > weekAgo).length;
+  $("#sDrop").textContent = state.tasks.filter(t => t.status === "dropped").length;
+
+  // 14-day load
+  const loads = Array.from({length:14}, () => 0);
+  open.forEach(t => { let n = daysFrom(t.due); if (n === null) return; if (n < 0) n = 0; if (n < 14) loads[n] += (t.estimate||30)/60; });
+  const max = Math.max(6, ...loads);
+  $("#bars").innerHTML = loads.map((h,i) => `<div class="bar ${h===0?"empty":h>6?"over":""}" style="height:${Math.max(2,h/max*100)}%" title="${h.toFixed(1)} h"></div>`).join("");
+  $("#days").innerHTML = loads.map((h,i) => { const d = new Date(today().getTime()+i*DAY);
+    return `<span class="${i===0?"today":""}">${i===0?"Today":d.toLocaleDateString(undefined,{weekday:"narrow"})+" "+d.getDate()}<br><span class="mono">${h?h.toFixed(1):"–"}</span></span>`; }).join("");
+
+  const sortFn = (a,b) => (a.due||"9999").localeCompare(b.due||"9999") || prio(b)-prio(a);
+  const groups = [
+    ["Overdue and due today", [...over, ...dueToday].sort(sortFn), "Nothing overdue or due today."],
+    ["This week", week.sort(sortFn), "Nothing due in the next 7 days."],
+    ["Later", later.sort(sortFn), "Nothing scheduled further out."],
+    ["No date yet", nodate.sort((a,b)=>prio(b)-prio(a)), "Everything has a date."],
+  ];
+  $("#groups").innerHTML = state.tasks.length === 0
+    ? `<div class="tasks"><div class="empty-state">${state.db ? "Your desk is clear. Add your first tasks in the box above." : "Loading your tasks…"}</div></div>`
+    : groups.map(([name, list, empty]) => `<section class="group"><h2>${name}<span class="count">${list.length}</span></h2>
+        <div class="tasks">${list.length ? list.map(taskHTML).join("") : `<div class="empty-state">${empty}</div>`}</div></section>`).join("");
+
+  const closed = state.tasks.filter(t => !isOpen(t)).sort((a,b)=>(b.closedAt||"").localeCompare(a.closedAt||""));
+  $("#archCount").textContent = `(${closed.length})`;
+  $("#archive").innerHTML = closed.length ? closed.map(taskHTML).join("") : `<div class="empty-state">Nothing finished yet.</div>`;
+
+  if (state.plan?.text) $("#planText").textContent = state.plan.text + (state.plan.date !== iso(new Date()) ? `\n\n(This plan is from ${state.plan.date}. Press "Plan my day" for a fresh one.)` : "");
+  const noAI = !state.sample;
+  $("#sortBtn").disabled = noAI || !state.canWrite; $("#planBtn").disabled = noAI || !state.canWrite;
+  $("#addBtn").disabled = !state.canWrite;
+}
+const prio = t => ({high:3,med:2,low:1}[t.priority]||2);
+
+function taskHTML(t){
+  const open = isOpen(t), n = daysFrom(t.due), busy = state.busy.has(t.id);
+  const dueChip = t.due ? `<span class="chip ${open && n<0?"hot":open && n===0?"warn":""}">${fmtDue(t.due)}</span>` : "";
+  const chips = [
+    t.status==="doing" ? `<span class="chip doing">In progress</span>` : "",
+    t.status==="dropped" ? `<span class="chip">Not needed</span>` : "",
+    t.priority==="high" ? `<span class="chip hot">Urgent</span>` : t.priority==="low" ? `<span class="chip">Low</span>` : "",
+    dueChip, t.estimate ? `<span class="chip mono">${fmtEst(t.estimate)}</span>` : ""].join("");
+  const actions = !state.canWrite ? "" : open ? `
+      ${t.status==="todo" ? `<button class="link" data-act="start" data-id="${t.id}">Start</button>` : `<button class="link" data-act="pause" data-id="${t.id}">Pause</button>`}
+      <button class="link" data-act="prep" data-id="${t.id}" ${!state.sample||busy?"disabled":""}>${busy?"Prepping…":t.prep?"Re-prep":"Prep it"}</button>
+      <button class="link" data-act="edit" data-id="${t.id}">Edit</button>
+      <button class="link" data-act="drop" data-id="${t.id}">Don't need</button>`
+    : `<button class="link" data-act="reopen" data-id="${t.id}">Reopen</button><button class="link" data-act="delete" data-id="${t.id}">Delete</button>`;
+  return `<div class="task pri-${open?t.priority:"x"} ${open?"":"closed"}">
+    <input type="checkbox" class="check" aria-label="Mark done" data-act="toggle" data-id="${t.id}" ${t.status==="done"?"checked":""} ${state.canWrite?"":"disabled"}>
+    <div><div class="t-title">${esc(t.title)}</div>
+      ${chips ? `<div class="t-meta">${chips}</div>` : ""}
+      ${t.nextStep && open ? `<div class="t-next">Next: ${esc(t.nextStep)}</div>` : ""}</div>
+    <div class="t-actions">${actions}</div>
+    ${t.prep && open ? `<div class="prep"><div class="label">Prepared by Claude</div><pre>${esc(t.prep)}</pre></div>` : ""}
+    ${state.openEdit === t.id ? editHTML(t) : ""}
+  </div>`;
+}
+function editHTML(t){
+  return `<form class="edit" data-id="${t.id}">
+    <label class="wide">Task<input id="e-title" name="title" value="${esc(t.title)}" required></label>
+    <label>Due<input id="e-due" type="date" name="due" value="${esc(t.due)}"></label>
+    <label>Priority<select id="e-prio" name="priority">${["high","med","low"].map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
+    <label>Time (minutes)<input id="e-est" type="number" min="0" step="5" name="estimate" value="${t.estimate||""}"></label>
+    <label class="wide">Next step<input id="e-next" name="nextStep" value="${esc(t.nextStep)}"></label>
+    <label class="wide">Notes<textarea id="e-notes" name="notes" rows="2">${esc(t.notes)}</textarea></label>
+    <div class="wide" style="display:flex;gap:8px"><button class="primary" type="submit">Save</button><button type="button" data-act="cancel">Cancel</button></div>
+  </form>`;
+}
+
+/* ---------- writes ---------- */
+const col = () => state.db.collection("tasks");
+function newTask(p){
+  return { title: String(p.title||"").slice(0,300), notes: String(p.notes||""), priority: ["high","med","low"].includes(p.priority)?p.priority:"med",
+    due: /^\d{4}-\d{2}-\d{2}$/.test(p.due||"") ? p.due : "", estimate: Number(p.estimate)||0, nextStep: String(p.nextStep||""),
+    status: "todo", prep: "", createdAt: new Date().toISOString(), closedAt: "" };
+}
+async function patch(id, data){
+  try { await col().doc(id).update(data); }
+  catch(e){ if (e.code === "invalid_argument") { state.canWrite = false; render(); } else flash("#capMsg", "Couldn't save that change. Try again.", true); }
+}
+function flash(sel, text, err){ const el = $(sel); el.textContent = text; el.classList.toggle("err", !!err); }
+
+$("#addBtn").onclick = async () => {
+  const lines = $("#dump").value.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return flash("#capMsg","Write at least one task first.", true);
+  for (const l of lines) { const high = l.startsWith("!"); await col().add(newTask({ title: l.replace(/^!\s*/,""), priority: high?"high":"med" })); }
+  $("#dump").value = ""; flash("#capMsg", `Added ${lines.length} task${lines.length>1?"s":""}.`);
+};
+
+$("#sortBtn").onclick = async () => {
+  const text = $("#dump").value.trim();
+  if (!text) return flash("#capMsg","Write what's on your plate first.", true);
+  $("#sortBtn").disabled = true; flash("#capMsg","Claude is sorting it…");
+  try {
+    const items = await state.sample.json(
+`You turn a person's brain-dump of work into a clean task list. Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
+Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail from the dump or ""}.
+Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.
+
+Brain-dump:
+${text}`, { modelTier: "default" });
+    if (!Array.isArray(items) || !items.length) throw { code: "empty" };
+    for (const it of items) await col().add(newTask(it));
+    $("#dump").value = ""; flash("#capMsg", `Added ${items.length} task${items.length>1?"s":""}.`);
+  } catch(e){ flash("#capMsg", e.code==="not_granted" ? "Claude wasn't allowed. Use \"Add as written\" instead." : e.code==="rate_limited" ? "Too many requests. Wait a minute and try again." : "Couldn't sort that. Try again or use \"Add as written\".", true); }
+  finally { $("#sortBtn").disabled = false; }
+};
+
+$("#planBtn").onclick = async () => {
+  const open = state.tasks.filter(isOpen);
+  if (!open.length) return flash("#planMsg","Add some tasks first.", true);
+  $("#planBtn").disabled = true; flash("#planMsg",""); $("#planText").textContent = "Thinking…";
+  const list = open.map(t => `- ${t.title} | priority ${t.priority} | ${t.due?fmtDue(t.due)+" ("+t.due+")":"no date"} | ${t.estimate?fmtEst(t.estimate):"no estimate"} | ${t.status==="doing"?"in progress":"not started"}${t.nextStep?" | next: "+t.nextStep:""}`).join("\n");
+  try {
+    const { text } = await state.sample(
+`You are a calm, practical work organizer. It is ${new Date().toLocaleString()}.
+Build today's plan from these open tasks. Assume a working day ending at 17:30 and about 6 focused hours.
+Format, plain text, no markdown symbols:
+First line: one sentence on where they stand (what's overdue, what matters most).
+Then time blocks, one per line, like "09:00–10:00  Task — what to get done in this block".
+Then "Get ahead:" with 1-3 lines on what to start early for later deadlines.
+Then "Can wait:" listing what they should leave for another day. Keep it under 20 lines.
+
+Tasks:
+${list}`, { cache: false, onText: ({text}) => { $("#planText").textContent = text; } });
+    await state.db.doc("meta/plan").set({ text, date: iso(new Date()) });
+  } catch(e){ $("#planText").textContent = state.plan?.text || "No plan yet."; flash("#planMsg", e.code==="not_granted" ? "Claude wasn't allowed to plan." : "Couldn't make a plan. Try again.", true); }
+  finally { $("#planBtn").disabled = false; }
+};
+
+async function prep(t){
+  state.busy.add(t.id); render();
+  try {
+    const { text } = await state.sample(
+`Help someone get ahead on this work task. Today is ${new Date().toDateString()}.
+Task: ${t.title}
+${t.notes?"Notes: "+t.notes:""}
+${t.due?"Due: "+t.due:""}
+Give, in plain text with no markdown symbols:
+Steps: 3-6 short numbered steps with rough times.
+Draft: if the task involves writing anything (an email, message, document, agenda, outline), write a ready-to-use first draft with [brackets] for details you don't know. Otherwise give a short checklist of what to gather.
+Keep it under 250 words.`, { cache: false });
+    await patch(t.id, { prep: text });
+  } catch(e){ flash("#capMsg", "Couldn't prep that task. Try again.", true); }
+  finally { state.busy.delete(t.id); render(); }
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const id = b.dataset.id, t = state.tasks.find(x => x.id === id), act = b.dataset.act;
+  const now = new Date().toISOString();
+  if (act === "toggle") return patch(id, t.status==="done" ? {status:"todo",closedAt:""} : {status:"done",closedAt:now});
+  if (act === "start") return patch(id, {status:"doing"});
+  if (act === "pause") return patch(id, {status:"todo"});
+  if (act === "drop") return patch(id, {status:"dropped",closedAt:now});
+  if (act === "reopen") return patch(id, {status:"todo",closedAt:""});
+  if (act === "delete") return col().doc(id).delete();
+  if (act === "prep") return prep(t);
+  if (act === "edit") { state.openEdit = state.openEdit===id ? null : id; return render(); }
+  if (act === "cancel") { state.openEdit = null; return render(); }
+});
+document.addEventListener("submit", e => {
+  const f = e.target.closest("form.edit"); if (!f) return; e.preventDefault();
+  const d = Object.fromEntries(new FormData(f));
+  state.openEdit = null;
+  patch(f.dataset.id, { title: d.title.trim(), due: d.due||"", priority: d.priority, estimate: Number(d.estimate)||0, nextStep: d.nextStep.trim(), notes: d.notes.trim() });
+});
+
+/* ---------- boot ---------- */
+render();
+(async () => {
+  const timer = setTimeout(() => { $("#conn").textContent = "Can't reach your tasks yet. Check your connection."; }, 10000);
+  const db = await claude.use("db");
+  if (!db) { clearTimeout(timer); $("#conn").textContent = "Sign in to claude.ai to see and save your tasks."; state.canWrite = false; render(); return; }
+  state.db = db;
+  claude.use("user").then(async u => { if (u) { const c = await u.can("data.write"); if (c === false) { state.canWrite = false; render(); } } });
+  claude.use("sample").then(s => { state.sample = s; render(); });
+  db.collection("tasks").onSnapshot(snap => {
+    if (!snap.metadata.fromCache) { clearTimeout(timer); $("#conn").textContent = "Saved and synced"; }
+    state.tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  }, err => { clearTimeout(timer); $("#conn").textContent = "Lost connection to your tasks. Reload the page to reconnect."; });
+  db.doc("meta/plan").onSnapshot(s => { state.plan = s.exists ? s.data() : null; render(); }, () => {});
+})();
+</script>
