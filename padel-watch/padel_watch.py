@@ -107,7 +107,9 @@ def in_window(local_dt):
 
 
 def find_slots(clubs):
+    """Return (slots, failed_club_ids)."""
     found = []
+    failed = set()
     today = datetime.now(timezone.utc).date()
     now_local = datetime.now(TZ)
     # Query one extra UTC day so late-evening London times are never missed
@@ -118,6 +120,7 @@ def find_slots(clubs):
                 data = get_availability(club["id"], day)
             except requests.RequestException as e:
                 print(f"  ! {club['name']} {day:%a %d}: {e}", file=sys.stderr)
+                failed.add(club["id"])
                 continue
             for court in data:
                 court_name = club["courts"].get(court.get("resource_id"), "Court")
@@ -141,7 +144,7 @@ def find_slots(clubs):
                         "price": s.get("price", ""),
                     })
             time.sleep(0.5)  # be gentle
-    return found
+    return found, failed
 
 
 def load_seen():
@@ -176,25 +179,33 @@ def notify(slots, dry_run=False):
         if not NTFY_TOPIC and not dry_run:
             print("(No NTFY_TOPIC set, so nothing was sent.)")
         return
-    requests.post(
-        f"https://ntfy.sh/{NTFY_TOPIC}",
-        data=body.encode("utf-8"),
-        headers={
-            "Title": title.encode("utf-8"),
-            "Priority": "high",
-            "Click": "https://playtomic.io",
-            "Tags": "tennis",
+    # JSON publishing keeps the emoji/accents in the title intact
+    # (non-ASCII in HTTP headers is unreliable).
+    r = requests.post(
+        "https://ntfy.sh/",
+        json={
+            "topic": NTFY_TOPIC,
+            "title": title,
+            "message": body,
+            "priority": 4,
+            "click": "https://playtomic.io",
+            "tags": ["tennis"],
         },
         timeout=20,
     )
+    r.raise_for_status()  # so a failed alert isn't marked as "seen"
 
 
 def run_once(dry_run=False):
     clubs = get_clubs()
     print(f"{datetime.now(TZ):%H:%M} checking {len(clubs)} clubs…")
-    slots = find_slots(clubs)
+    slots, failed = find_slots(clubs)
     current = {s["key"] for s in slots}
     seen = load_seen()
+    # If a club couldn't be fetched this time, keep remembering its slots so
+    # a temporary error doesn't make every one of them re-alert next run.
+    if failed:
+        current |= {k for k in seen if k.split("|", 1)[0] in failed}
     new = [s for s in slots if s["key"] not in seen]
     if new:
         notify(new, dry_run)
