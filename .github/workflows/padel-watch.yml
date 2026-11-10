@@ -33,6 +33,10 @@ jobs:
           key: seen-${{ github.run_id }}
           restore-keys: seen-
 
+      - run: bash probe.sh   # TEMPORARY probe
+      - run: exit 0
+        if: false
+
       - run: python padel_watch.py
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
