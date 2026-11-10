@@ -51,7 +51,7 @@ EXCLUDE = [s for s in os.getenv("EXCLUDE", "").split(",") if s.strip()]
 
 STATE_FILE = Path(os.getenv("STATE_FILE", "seen_slots.json"))
 TZ = ZoneInfo("Europe/London")
-API = os.getenv("PLAYTOMIC_API", "https://api.playtomic.io/v1")
+API = os.getenv("PLAYTOMIC_API", "https://playtomic.io/api/v1")
 HEADERS = {"User-Agent": "padel-watch personal script (low frequency)"}
 # -----------------------------------------------------------------------------
 
