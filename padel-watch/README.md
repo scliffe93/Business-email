@@ -1,5 +1,9 @@
 # Padel Watch – Bristol
 
+> **Status: paused.** Playtomic blocks requests from GitHub's servers, so the
+> scheduled GitHub check is switched off. The script could still work from a
+> device on your home internet once it's pointed at Playtomic's current address.
+
 Pings your phone when a padel court opens up near Bristol at around 7am or 7pm.
 
 ## 1. Get alerts on your phone

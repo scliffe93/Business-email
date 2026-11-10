@@ -1,8 +1,11 @@
 name: Padel watch
 
 on:
-  schedule:
-    - cron: "*/10 5-21 * * *"   # every 10 min, 05:00–21:59 UTC (GitHub may run it a few minutes late)
+  # Schedule turned off: Playtomic blocks requests from GitHub's servers
+  # (403), so scheduled checks can't see any courts. To turn it back on,
+  # restore these two lines:
+  # schedule:
+  #   - cron: "*/10 5-21 * * *"   # every 10 min, 05:00–21:59 UTC
   workflow_dispatch:            # lets you press "Run" manually
 
 # Never let two checks overlap, or they'd fight over the "already told you" list
