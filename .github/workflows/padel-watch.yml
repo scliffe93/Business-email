@@ -1,0 +1,38 @@
+name: Padel watch
+
+on:
+  schedule:
+    - cron: "*/10 5-21 * * *"   # every 10 min, 05:00–21:59 UTC (GitHub may run it a few minutes late)
+  workflow_dispatch:            # lets you press "Run" manually
+
+# Never let two checks overlap, or they'd fight over the "already told you" list
+concurrency:
+  group: padel-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: padel-watch
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      # Remembers which slots you've already been told about between runs
+      - uses: actions/cache@v4
+        with:
+          path: padel-watch/seen_slots.json
+          key: seen-${{ github.run_id }}
+          restore-keys: seen-
+
+      - run: python padel_watch.py
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
