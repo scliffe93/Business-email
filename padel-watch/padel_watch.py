@@ -51,7 +51,7 @@ EXCLUDE = [s for s in os.getenv("EXCLUDE", "").split(",") if s.strip()]
 
 STATE_FILE = Path(os.getenv("STATE_FILE", "seen_slots.json"))
 TZ = ZoneInfo("Europe/London")
-API = "https://playtomic.io/api/v1"
+API = os.getenv("PLAYTOMIC_API", "https://api.playtomic.io/v1")
 HEADERS = {"User-Agent": "padel-watch personal script (low frequency)"}
 # -----------------------------------------------------------------------------
 
@@ -198,7 +198,10 @@ def notify(slots, dry_run=False):
 
 def run_once(dry_run=False):
     clubs = get_clubs()
-    print(f"{datetime.now(TZ):%H:%M} checking {len(clubs)} clubs…")
+    print(f"{datetime.now(TZ):%H:%M} checking {len(clubs)} clubs: "
+          + ", ".join(c["name"] for c in clubs))
+    if not clubs:
+        raise RuntimeError("Playtomic returned no clubs, so nothing can be checked")
     slots, failed = find_slots(clubs)
     current = {s["key"] for s in slots}
     seen = load_seen()
@@ -230,8 +233,10 @@ def main():
     while True:
         try:
             run_once(a.dry_run)
-        except requests.RequestException as e:
+        except (requests.RequestException, RuntimeError, ValueError) as e:
             print(f"Check failed: {e}", file=sys.stderr)
+            if not a.loop:
+                sys.exit(1)  # mark the GitHub run as failed so you notice
         if not a.loop:
             break
         time.sleep(CHECK_EVERY_MIN * 60)
