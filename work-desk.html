@@ -441,8 +441,9 @@ function render(){
     : list.sort((a,b) => (a.due||"9999").localeCompare(b.due||"9999") || prio(b)-prio(a));
   const emptyCopy = { today: "Nothing due today or overdue.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
     waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet." }[state.tab];
-  const keep = {}, focusId = document.activeElement?.id;
-  document.querySelectorAll("#board .detail [id]").forEach(el => { if ("value" in el && el.type !== "range") keep[el.id] = el.value; });
+  const keep = {}, focusId = document.activeElement?.id, openDetail = document.querySelector("#board .detail");
+  if (openDetail && openDetail.dataset.id === state.openEdit)   // same task still open: keep what's being typed
+    openDetail.querySelectorAll("[id]").forEach(el => { if ("value" in el && el.type !== "range") keep[el.id] = el.value; });
   $("#board").innerHTML = !state.db ? `<div class="empty-state">Loading your tasks…</div>`
     : state.tasks.length === 0 ? `<div class="empty-state"><b>Your board is empty</b>Talk to the check-in, or type, speak or upload your work in "What's on your plate?" below.</div>`
     : `<div class="row head" aria-hidden="true"><span></span><span>Task</span><span>Status</span><span>Progress</span><span>Due</span><span>Waiting on</span></div>` +
@@ -481,7 +482,7 @@ function rowHTML(t){
 
 function detailHTML(t){
   const ups = (t.updates||[]).slice().reverse(), busy = state.busy.has(t.id), open = isOpen(t), pct = t.status === "done" ? 100 : (t.progress||0);
-  return `<div class="detail">
+  return `<div class="detail" data-id="${t.id}">
     <section class="updates" aria-label="Updates">
       <h3 class="label">Updates</h3>
       ${state.canWrite ? `<form class="upform" data-id="${t.id}">
@@ -497,14 +498,14 @@ function detailHTML(t){
       ${t.prep && open ? `<div class="prep"><div class="label">Prepared by Claude</div><pre>${esc(t.prep)}</pre></div>` : ""}
     </section>
     <form class="edit" data-id="${t.id}">
-      <label class="wide">Task<input id="e-title" name="title" value="${esc(t.title)}" required></label>
-      <label class="wide">How far along: <b id="e-pct-${t.id}">${pct}%</b><input id="e-prog" type="range" min="0" max="100" step="10" name="progress" value="${pct}" data-act="progress" data-id="${t.id}"></label>
-      <label>Due<input id="e-due" type="date" name="due" value="${esc(t.due)}"></label>
-      <label>Priority<select id="e-prio" name="priority">${["high","med","low"].map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
-      <label>Waiting on / owner<input id="e-who" name="waitingOn" value="${esc(t.waitingOn)}" placeholder="Name"></label>
-      <label>Time (minutes)<input id="e-est" type="number" min="0" step="5" name="estimate" value="${t.estimate||""}"></label>
-      <label class="wide">Next step<input id="e-next" name="nextStep" value="${esc(t.nextStep)}"></label>
-      <label class="wide">Notes<textarea id="e-notes" name="notes" rows="3">${esc(t.notes)}</textarea></label>
+      <label class="wide">Task<input id="e-title-${t.id}" name="title" value="${esc(t.title)}" required></label>
+      <label class="wide">How far along: <b id="e-pct-${t.id}">${pct}%</b><input id="e-prog-${t.id}" type="range" min="0" max="100" step="10" name="progress" value="${pct}" data-act="progress" data-id="${t.id}"></label>
+      <label>Due<input id="e-due-${t.id}" type="date" name="due" value="${esc(t.due)}"></label>
+      <label>Priority<select id="e-prio-${t.id}" name="priority">${["high","med","low"].map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
+      <label>Waiting on / owner<input id="e-who-${t.id}" name="waitingOn" value="${esc(t.waitingOn)}" placeholder="Name"></label>
+      <label>Time (minutes)<input id="e-est-${t.id}" type="number" min="0" step="5" name="estimate" value="${t.estimate||""}"></label>
+      <label class="wide">Next step<input id="e-next-${t.id}" name="nextStep" value="${esc(t.nextStep)}"></label>
+      <label class="wide">Notes<textarea id="e-notes-${t.id}" name="notes" rows="3">${esc(t.notes)}</textarea></label>
       ${state.canWrite ? `<div class="wide formbar">
         <button class="primary" type="submit">Save</button>
         <button type="button" data-act="prep" data-id="${t.id}" ${!state.sample||busy?"disabled":""}>${busy?"Prepping…":t.prep?"Re-prep with Claude":"Prep with Claude"}</button>
@@ -521,6 +522,16 @@ function newTask(p){
     due: /^\d{4}-\d{2}-\d{2}$/.test(p.due||"") ? p.due : "", estimate: Number(p.estimate)||0, nextStep: String(p.nextStep||""),
     status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
 }
+const norm = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const findDup = title => state.tasks.find(t => isOpen(t) && norm(t.title) === norm(title));
+// add a task unless an open task with the same title is already on the board; returns {id, dup}
+async function addTask(p){
+  const dup = findDup(p.title);
+  if (dup) return { id: dup.id, dup: true };
+  const ref = await col().add(newTask(p));
+  state.tasks.push({ id: ref.id, ...newTask(p) });   // so a second copy in the same batch is caught too
+  return { id: ref.id, dup: false };
+}
 async function patch(id, data){
   try { await col().doc(id).update(data); }
   catch(e){ if (e.code === "invalid_argument") { state.canWrite = false; render(); } else flash("#capMsg", "Couldn't save that change. Try again.", true); }
@@ -531,8 +542,9 @@ $("#addBtn").onclick = async () => {
   const lines = $("#dump").value.split("\n").map(s => s.trim()).filter(Boolean);
   if (!lines.length) return flash("#capMsg","Write at least one task first.", true);
   try {
-    for (const l of lines) { const high = l.startsWith("!"); await col().add(newTask({ title: l.replace(/^!\s*/,""), priority: high?"high":"med" })); }
-    $("#dump").value = ""; flash("#capMsg", `Added ${lines.length} task${lines.length>1?"s":""}.`);
+    let added = 0, skipped = 0;
+    for (const l of lines) { const high = l.startsWith("!"); const r = await addTask({ title: l.replace(/^!\s*/,""), priority: high?"high":"med" }); r.dup ? skipped++ : added++; }
+    $("#dump").value = ""; flash("#capMsg", `Added ${added} task${added===1?"":"s"}.` + (skipped ? ` Skipped ${skipped} already on your board.` : ""));
   } catch(e){ flash("#capMsg", "Couldn't save your tasks (" + (e.code || "error") + "). Your text is still in the box; try again.", true); }
 };
 
@@ -542,8 +554,10 @@ Split combined items into separate tasks. Resolve words like "Thursday" or "end 
 async function extractTasks(prompt, opts = {}, source = ""){
   const items = await state.sample.json(prompt, { modelTier: "default", ...opts });
   if (!Array.isArray(items)) throw { code: "empty" };
-  for (const it of items) { if (source) it.notes = [it.notes, `From: ${source}`].filter(Boolean).join("\n"); await col().add(newTask(it)); }
-  return items.length;
+  let added = 0;
+  for (const it of items) { if (source) it.notes = [it.notes, `From: ${source}`].filter(Boolean).join("\n"); if (!(await addTask(it)).dup) added++; }
+  state.lastSkipped = items.length - added;
+  return added;
 }
 const sampleErr = e => e.code==="not_granted" ? "Claude wasn't allowed to help. Allow it from the page's permissions and try again."
   : e.code==="rate_limited" ? "Too many requests. Wait a minute and try again." : null;
@@ -558,8 +572,8 @@ ${TASK_FORMAT}
 
 Brain-dump:
 ${text}`);
-    if (!n) throw { code: "empty" };
-    $("#dump").value = ""; flash("#capMsg", `Added ${n} task${n>1?"s":""}.`);
+    if (!n && !state.lastSkipped) throw { code: "empty" };
+    $("#dump").value = ""; flash("#capMsg", `Added ${n} task${n===1?"":"s"}.` + (state.lastSkipped ? ` Skipped ${state.lastSkipped} already on your board.` : ""));
   } catch(e){ flash("#capMsg", sampleErr(e) || "Couldn't sort that. Try again or use \"Add as written\".", true); }
   finally { $("#sortBtn").disabled = false; }
 };
@@ -718,10 +732,13 @@ document.addEventListener("submit", e => {
   if (up) { e.preventDefault(); const t = state.tasks.find(x => x.id === up.dataset.id), v = up.elements.text.value.trim();
     if (t && v) { up.elements.text.value = ""; state.focusUpdate = t.id; postUpdate(t, v); } return; }
   const f = e.target.closest("form.edit"); if (!f) return; e.preventDefault();
-  const d = Object.fromEntries(new FormData(f));
-  patch(f.dataset.id, { title: d.title.trim(), due: d.due||"", priority: d.priority, estimate: Number(d.estimate)||0,
-    waitingOn: (d.waitingOn||"").trim(), nextStep: d.nextStep.trim(), notes: d.notes.trim() });
-  flash("#boardMsg", "Saved.");
+  const d = Object.fromEntries(new FormData(f)), t = state.tasks.find(x => x.id === f.dataset.id);
+  if (!t) return;
+  const next = { title: d.title.trim(), due: d.due||"", priority: d.priority, estimate: Number(d.estimate)||0,
+    waitingOn: (d.waitingOn||"").trim(), nextStep: (d.nextStep||"").trim(), notes: (d.notes||"").trim() };
+  const changed = Object.fromEntries(Object.entries(next).filter(([k,v]) => v !== (t[k] ?? (k === "estimate" ? 0 : ""))));
+  if (!Object.keys(changed).length) return flash("#boardMsg", "No changes to save.");
+  patch(t.id, changed).then(() => flash("#boardMsg", `Saved "${t.title}".`));
 });
 
 /* ---------- check-in conversation ---------- */
@@ -748,9 +765,11 @@ const taskLine = t => `[${t.id}] ${t.title} | ${STATUS[t.status]?.label || t.sta
 function chatTools(actions){
   const find = id => { const t = state.tasks.find(x => x.id === String(id)); if (!t) throw new Error("No task with id " + id); return t; };
   return [
-    { name: "add_task", description: "Add a new task to the person's list. Returns the new task id.",
+    { name: "add_task", description: "Add a new task to the person's list. Returns the new task id. Check the task list first: never add something that is already there.",
       inputSchema: { type:"object", properties: { title:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["title"] },
-      async execute(i){ const ref = await col().add(newTask(i)); actions.push("Added: " + String(i.title)); renderTalk(state.pendingTalk); return { id: ref.id }; } },
+      async execute(i){ const r = await addTask(i);
+        if (r.dup) return { id: r.id, note: "Already on the board with this id; not added again. Use update_task if something changed." };
+        actions.push("Added: " + String(i.title)); renderTalk(state.pendingTalk); return { id: r.id }; } },
     { name: "update_task", description: "Change an existing task by id: mark it done, in progress (doing), back to todo, or dropped (not needed); or change its title, due date, priority, estimate, next step or notes.",
       inputSchema: { type:"object", properties: { id:{type:"string"}, status:{type:"string",enum:["todo","doing","waiting","stuck","review","done","dropped"],description:"todo=Not started, doing=Working on it, waiting=Waiting on someone, stuck, review=Ready for review, done, dropped=Not needed"}, progress:{type:"number",description:"0-100 percent done"}, waitingOn:{type:"string",description:"person it is waiting on or who owns the next action"}, title:{type:"string"}, due:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, estimate:{type:"number"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["id"] },
       async execute(i){
