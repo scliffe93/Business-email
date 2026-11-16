@@ -159,8 +159,17 @@ button.link:hover{color:var(--accent);background:var(--accent-soft)}
 
 /* board */
 .boardcard{padding:18px 18px 8px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.board-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.board-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .board-top h2{font-size:1.3rem;font-weight:800}
+.board-top .msg{flex:1}
+.search{position:relative;flex:0 1 340px;min-width:0}
+.search svg{position:absolute;left:11px;top:50%;width:16px;height:16px;transform:translateY(-50%);stroke:var(--muted);pointer-events:none}
+.search input{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 12px 8px 34px;background:var(--raised)}
+.search input:focus{border-color:var(--accent);background:var(--surface)}
+.search-note{font-size:.85rem;color:var(--muted);padding:4px 6px 0}
+.search-note button{margin-left:6px}
+mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
+@media (max-width:560px){.board-top{flex-wrap:wrap}.search{flex:1 1 100%}}
 .tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:none}
 .tab{border:none;background:none;border-radius:8px 8px 0 0;padding:9px 12px;color:var(--muted);font-weight:600;white-space:nowrap;display:flex;gap:6px;align-items:center;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab:hover{color:var(--ink);background:var(--raised)}
@@ -296,6 +305,10 @@ button.link:hover{color:var(--accent);background:var(--accent-soft)}
     <div class="board-top">
       <h2 id="boardH">Board</h2>
       <span class="msg" id="boardMsg" role="status"></span>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="q" placeholder="Search tasks, notes, updates, people…" aria-label="Search tasks" autocomplete="off">
+      </div>
     </div>
     <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
     <div class="board" id="board"></div>
@@ -372,6 +385,25 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 
 $("#todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
 
+/* ---------- search ---------- */
+state.q = "";
+const searchText = t => norm([t.title, t.notes, t.nextStep, t.waitingOn, STATUS[t.status]?.label, ...(t.updates||[]).map(u => u.text)].join(" "));
+const matches = (t, q) => q.split(" ").every(w => searchText(t).includes(w));
+function hl(text){
+  const out = esc(text), words = norm(state.q).split(" ").filter(w => w.length > 1);
+  if (!words.length) return out;
+  const re = new RegExp("(" + words.map(w => esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  return out.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag || txt.replace(re, "<mark>$1</mark>"));
+}
+$("#q").addEventListener("input", e => { state.q = e.target.value; state.openEdit = null; render(); });
+$("#q").addEventListener("keydown", e => { if (e.key === "Escape") { e.target.value = ""; state.q = ""; render(); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) { e.preventDefault(); $("#q").focus(); }
+});
+document.addEventListener("click", e => { if (e.target.closest("[data-clear-search]")) { $("#q").value = ""; state.q = ""; render(); $("#q").focus(); } });
+// a tab click clears the search
+document.addEventListener("click", e => { if (e.target.closest("[data-tab]") && state.q) { $("#q").value = ""; state.q = ""; } }, true);
+
 /* ---------- render ---------- */
 const STATUS = {
   todo:    { label: "Not started",        cls: "st-todo" },
@@ -434,10 +466,12 @@ function render(){
     return `<span class="${i===0?"today":""}">${d.toLocaleDateString(undefined,{weekday:"narrow"})}<br>${d.getDate()}</span>`; }).join("");
 
   // tabs + board
-  $("#tabs").innerHTML = TABS.map(([k, name, f]) => `<button role="tab" class="tab" aria-selected="${state.tab===k}" data-tab="${k}">${name}<span class="tab-n">${state.tasks.filter(f).length}</span></button>`).join("");
+  $("#tabs").innerHTML = TABS.map(([k, name, f]) => `<button role="tab" class="tab" aria-selected="${!state.q && state.tab===k}" data-tab="${k}">${name}<span class="tab-n">${state.tasks.filter(f).length}</span></button>`).join("");
   const [, , filt] = TABS.find(x => x[0] === state.tab) || TABS[0];
-  let list = state.tasks.filter(filt);
-  list = state.tab === "closed" ? list.sort((a,b)=>(b.closedAt||"").localeCompare(a.closedAt||""))
+  const q = norm(state.q);
+  let list = q ? state.tasks.filter(t => matches(t, q)) : state.tasks.filter(filt);
+  list = q ? list.sort((a,b) => (isOpen(b) - isOpen(a)) || (a.due||"9999").localeCompare(b.due||"9999"))
+    : state.tab === "closed" ? list.sort((a,b)=>(b.closedAt||"").localeCompare(a.closedAt||""))
     : list.sort((a,b) => (a.due||"9999").localeCompare(b.due||"9999") || prio(b)-prio(a));
   const emptyCopy = { today: "Nothing due today or overdue.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
     waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet." }[state.tab];
@@ -447,7 +481,8 @@ function render(){
   $("#board").innerHTML = !state.db ? `<div class="empty-state">Loading your tasks…</div>`
     : state.tasks.length === 0 ? `<div class="empty-state"><b>Your board is empty</b>Talk to the check-in, or type, speak or upload your work in "What's on your plate?" below.</div>`
     : `<div class="row head" aria-hidden="true"><span></span><span>Task</span><span>Status</span><span>Progress</span><span>Due</span><span>Waiting on</span></div>` +
-      (list.length ? list.map(rowHTML).join("") : `<div class="empty-state">${emptyCopy}</div>`);
+      (q ? `<div class="search-note">${list.length} result${list.length===1?"":"s"} for “${esc(state.q)}” across all tasks<button class="link" data-clear-search>Clear search</button></div>` : "") +
+      (list.length ? list.map(rowHTML).join("") : `<div class="empty-state">${q ? "Nothing matches. Try another word, or a person's name." : emptyCopy}</div>`);
 
   for (const [k,v] of Object.entries(keep)) { const el = document.getElementById(k); if (el) el.value = v; }
   if (focusId && !state.focusUpdate) document.getElementById(focusId)?.focus();
@@ -466,15 +501,15 @@ function rowHTML(t){
     <div class="row">
       <input type="checkbox" class="check" aria-label="Mark done: ${esc(t.title)}" data-act="toggle" data-id="${t.id}" ${t.status==="done"?"checked":""} ${ro}>
       <button class="r-title" data-act="open" data-id="${t.id}" aria-expanded="${state.openEdit===t.id}">
-        <span class="t-title"><span class="pri ${open?t.priority:"low"}" aria-hidden="true"></span><span>${esc(t.title)}</span>
+        <span class="t-title"><span class="pri ${open?t.priority:"low"}" aria-hidden="true"></span><span>${hl(t.title)}</span>
           ${t.updates?.length ? `<span class="ucount" title="Updates">${t.updates.length}</span>` : ""}</span>
-        ${lu ? `<span class="r-sub">${esc(lu.text)} <i>· ${ago(lu.at)}</i></span>` : t.nextStep && open ? `<span class="r-sub">Next: ${esc(t.nextStep)}</span>` : ""}
+        ${lu ? `<span class="r-sub">${hl(lu.text)} <i>· ${ago(lu.at)}</i></span>` : t.nextStep && open ? `<span class="r-sub">Next: ${esc(t.nextStep)}</span>` : ""}
       </button>
       <label class="r-status"><span class="vh">Status</span>
         <select class="pill ${st.cls}" data-act="status" data-id="${t.id}" ${ro}>${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${k===t.status?"selected":""}>${v.label}</option>`).join("")}</select></label>
       <div class="r-prog" title="${pct}% done"><span class="pbar"><span style="width:${pct}%"></span></span><span class="mono">${pct}%</span></div>
       <div class="r-due">${t.due ? `<span class="chip ${dueCls}">${fmtDue(t.due).replace(/^Due /,"")}</span>` : `<span class="dim">No date</span>`}</div>
-      <div class="r-who">${t.waitingOn ? `<span class="who"><span class="av" aria-hidden="true">${esc(t.waitingOn.trim()[0]||"?").toUpperCase()}</span>${esc(t.waitingOn)}</span>` : `<span class="dim">–</span>`}</div>
+      <div class="r-who">${t.waitingOn ? `<span class="who"><span class="av" aria-hidden="true">${esc(t.waitingOn.trim()[0]||"?").toUpperCase()}</span>${hl(t.waitingOn)}</span>` : `<span class="dim">–</span>`}</div>
     </div>
     ${state.openEdit === t.id ? detailHTML(t) : ""}
   </div>`;
@@ -549,7 +584,7 @@ $("#addBtn").onclick = async () => {
 };
 
 const TASK_FORMAT = `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
-Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.`;
+Use the person's own words for things (for example "Uniforms", never "Team Wear"). Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.`;
 
 async function extractTasks(prompt, opts = {}, source = ""){
   const items = await state.sample.json(prompt, { modelTier: "default", ...opts });
@@ -798,6 +833,7 @@ async function talk(text){
   state.pendingTalk = { user: text, reply: "", actions };
   renderTalk(state.pendingTalk);
   const rules = `You are the person's work companion inside their Work Desk. You talk like a calm, practical colleague: short replies (usually under 120 words), plain text, no markdown headings or bold. Today is ${new Date().toLocaleString()} (ISO date ${iso(new Date())}).
+Use their own words for things (for example "Uniforms", never "Team Wear").
 Your jobs:
 - Keep their task list accurate. When they mention new work, add it with add_task (resolve days like "Thursday" to real dates, estimate minutes). When they say something is finished, started, waiting on someone, stuck, ready for review, partly done or moved, use update_task with the task id (set status, progress and waitingOn). When they give context about a task (who it needs action from, what happened), also post it with add_update. Never invent tasks they didn't mention.
 - Help them see where they are and what to do next. Be specific: name the task and the next action. If they're overloaded, say what can wait.
