@@ -11,6 +11,8 @@
   --sun:#e8a20c; --sun-soft:#fdf1d6; --sun-ink:#7a5300;
   --hot:#c23a2b; --hot-soft:#fbe4e1; --ok:#1f8a5b; --ok-soft:#dcf2e7;
   --shadow:0 1px 2px rgba(22,26,36,.05),0 4px 16px rgba(22,26,36,.05);
+  --tag-1:#dbe7ff; --tag-1-ink:#1d4aa8; --tag-2:#dcf2e4; --tag-2-ink:#17703f; --tag-3:#fde7cf; --tag-3-ink:#9a4a06; --tag-4:#f1e1fb; --tag-4-ink:#7330a5;
+  --tag-5:#fde0e6; --tag-5-ink:#a8213f; --tag-6:#d6f1f3; --tag-6-ink:#0f6670; --tag-7:#f3efcf; --tag-7-ink:#6f6206; --tag-8:#e6e8ee; --tag-8-ink:#3c4352;
   --st-todo:#c9cdd6; --st-todo-ink:#2b303b; --st-doing:#f2a516; --st-wait:#8a5cd6; --st-stuck:#d8354f; --st-review:#2f7bf0; --st-done:#1f9d63; --st-drop:#7d8494;
   --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
   --f-body:"Figtree",system-ui,-apple-system,sans-serif;
@@ -22,14 +24,18 @@
   --hero:#1a2045; --hero-ink:#eef0fb; --hero-muted:#9ea6d4; --hero-line:#2c3568;
   --sun:#f3bd4a; --sun-soft:#3a2f15; --sun-ink:#f3cf7f;
   --hot:#ff8a7a; --hot-soft:#3b1f1c; --ok:#5fd39c; --ok-soft:#173326;
-  --shadow:0 1px 2px rgba(0,0,0,.3); --st-todo:#3a4152; --st-todo-ink:#d5d9e3; color-scheme:dark}}
+  --shadow:0 1px 2px rgba(0,0,0,.3); --tag-1:#1f2d52; --tag-1-ink:#a9c2ff; --tag-2:#173527; --tag-2-ink:#86dcaa; --tag-3:#3d2814; --tag-3-ink:#f7b77a; --tag-4:#33214a; --tag-4-ink:#d4a8f5;
+  --tag-5:#40202a; --tag-5-ink:#ff9fb3; --tag-6:#123538; --tag-6-ink:#7fd8e0; --tag-7:#36321a; --tag-7-ink:#e6d77a; --tag-8:#2a2f3b; --tag-8-ink:#c3c8d4;
+  --st-todo:#3a4152; --st-todo-ink:#d5d9e3; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0e1118; --surface:#171b25; --raised:#1e2330; --ink:#e8eaf1; --muted:#9399aa; --line:#2a3040;
   --accent:#8d9cff; --accent-ink:#0e1118; --accent-soft:#232a4d;
   --hero:#1a2045; --hero-ink:#eef0fb; --hero-muted:#9ea6d4; --hero-line:#2c3568;
   --sun:#f3bd4a; --sun-soft:#3a2f15; --sun-ink:#f3cf7f;
   --hot:#ff8a7a; --hot-soft:#3b1f1c; --ok:#5fd39c; --ok-soft:#173326;
-  --shadow:0 1px 2px rgba(0,0,0,.3); --st-todo:#3a4152; --st-todo-ink:#d5d9e3; color-scheme:dark}
+  --shadow:0 1px 2px rgba(0,0,0,.3); --tag-1:#1f2d52; --tag-1-ink:#a9c2ff; --tag-2:#173527; --tag-2-ink:#86dcaa; --tag-3:#3d2814; --tag-3-ink:#f7b77a; --tag-4:#33214a; --tag-4-ink:#d4a8f5;
+  --tag-5:#40202a; --tag-5-ink:#ff9fb3; --tag-6:#123538; --tag-6-ink:#7fd8e0; --tag-7:#36321a; --tag-7-ink:#e6d77a; --tag-8:#2a2f3b; --tag-8-ink:#c3c8d4;
+  --st-todo:#3a4152; --st-todo-ink:#d5d9e3; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 64px}
@@ -212,6 +218,28 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 .chip{font-size:.73rem;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .chip.hot{background:var(--hot-soft);color:var(--hot);border-color:transparent}
 .chip.sun{background:var(--sun-soft);color:var(--sun-ink);border-color:transparent}
+.tagrow{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.tag{font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:6px;white-space:nowrap;letter-spacing:.01em}
+.tc-1{background:var(--tag-1);color:var(--tag-1-ink)}
+.tc-2{background:var(--tag-2);color:var(--tag-2-ink)}
+.tc-3{background:var(--tag-3);color:var(--tag-3-ink)}
+.tc-4{background:var(--tag-4);color:var(--tag-4-ink)}
+.tc-5{background:var(--tag-5);color:var(--tag-5-ink)}
+.tc-6{background:var(--tag-6);color:var(--tag-6-ink)}
+.tc-7{background:var(--tag-7);color:var(--tag-7-ink)}
+.tc-8{background:var(--tag-8);color:var(--tag-8-ink)}
+.projbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:2px 0}
+.projbar .label{margin-right:2px}
+.pf{border:1px solid transparent;border-radius:8px;padding:3px 10px;font-size:.78rem;font-weight:700;cursor:pointer}
+.pf.all{background:var(--raised);color:var(--muted);border-color:var(--line)}
+.pf[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.pf .n{font-family:var(--f-mono);font-weight:500;opacity:.75;margin-left:4px}
+.tagedit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:5px 6px;background:var(--surface)}
+.tagedit .tag{display:inline-flex;align-items:center;gap:4px;font-size:.78rem;padding:3px 4px 3px 9px}
+.tagedit .tag button{all:unset;cursor:pointer;width:16px;height:16px;border-radius:4px;display:grid;place-items:center;font-size:.9rem;line-height:1}
+.tagedit .tag button:hover{background:rgba(0,0,0,.12)}
+.tagedit input{border:none!important;padding:3px 4px!important;flex:1;min-width:120px;background:transparent!important;outline:none}
+
 /* detail drawer */
 .detail{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:6px 6px 18px 36px}
 .updates{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -229,6 +257,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 .edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
 .edit label{display:flex;flex-direction:column;gap:3px;font-size:.76rem;color:var(--muted);font-weight:600}
 .edit label b{color:var(--ink)}
+.edit .wide > label{font-size:.76rem;color:var(--muted);font-weight:600;display:block;margin-bottom:3px}
 .edit input,.edit select,.edit textarea{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface);font-weight:400;min-width:0}
 .edit input[type=range]{padding:0;border:none;background:none;accent-color:var(--st-done)}
 .edit .wide{grid-column:1 / -1}
@@ -311,6 +340,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
       </div>
     </div>
     <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
+    <div class="projbar" id="projbar" aria-label="Filter by project"></div>
     <div class="board" id="board"></div>
   </section>
 
@@ -385,9 +415,41 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 
 $("#todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
 
+/* ---------- project tags ---------- */
+const cleanTag = s => String(s||"").replace(/\s+/g," ").trim().slice(0, 32);
+const tagsOf = t => Array.isArray(t.tags) ? t.tags.filter(Boolean) : [];
+function allTags(){ const m = new Map(); state.tasks.forEach(t => tagsOf(t).forEach(g => { const k = norm(g); if (!m.has(k)) m.set(k, g); })); return [...m.values()].sort((a,b) => a.localeCompare(b)); }
+// each project gets its own colour (by alphabetical position), recomputed when the task list changes
+let _tagIdx = { src: null, map: new Map() };
+function tagClass(name){
+  if (_tagIdx.src !== state.tasks) _tagIdx = { src: state.tasks, map: new Map(allTags().map((g, i) => [norm(g), i])) };
+  const i = _tagIdx.map.get(norm(name)); return "tc-" + ((i ?? 7) % 8 + 1);
+}
+const tagChip = g => `<span class="tag ${tagClass(g)}">${hl(g)}</span>`;
+try { state.tag = localStorage.getItem("wd-tag") || ""; } catch { state.tag = ""; }
+function mergeTags(list){ const out = [], seen = new Set(), known = new Map(allTags().map(g => [norm(g), g]));
+  for (const g of list || []) { const c = cleanTag(g), k = norm(c); if (!k || seen.has(k)) continue; seen.add(k); out.push(known.get(k) || c); } return out; }
+
+document.addEventListener("click", e => {
+  const pf = e.target.closest("[data-tag]");
+  if (pf) { state.tag = pf.dataset.tag; state.openEdit = null; try { localStorage.setItem("wd-tag", state.tag); } catch {} return render(); }
+  const un = e.target.closest("[data-untag]");
+  if (un) { const t = state.tasks.find(x => x.id === un.dataset.id); if (t) { state.focusTag = t.id; patch(t.id, { tags: tagsOf(t).filter(g => g !== un.dataset.untag) }); } }
+});
+function addTagFromInput(el){
+  const t = state.tasks.find(x => x.id === el.dataset.tagin), v = cleanTag(el.value.replace(/,$/, ""));
+  if (!t || !v) return; el.value = "";
+  const next = mergeTags([...tagsOf(t), v]);
+  if (next.length !== tagsOf(t).length) { state.focusTag = t.id; patch(t.id, { tags: next }); }
+}
+document.addEventListener("keydown", e => { const el = e.target.closest?.("[data-tagin]"); if (!el) return;
+  if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTagFromInput(el); }
+  else if (e.key === "Backspace" && !el.value) { const t = state.tasks.find(x => x.id === el.dataset.tagin); if (t && tagsOf(t).length) { state.focusTag = t.id; patch(t.id, { tags: tagsOf(t).slice(0, -1) }); } } });
+document.addEventListener("change", e => { const el = e.target.closest?.("[data-tagin]"); if (el && el.value.trim()) addTagFromInput(el); });
+
 /* ---------- search ---------- */
 state.q = "";
-const searchText = t => norm([t.title, t.notes, t.nextStep, t.waitingOn, STATUS[t.status]?.label, ...(t.updates||[]).map(u => u.text)].join(" "));
+const searchText = t => norm([t.title, ...tagsOf(t), t.notes, t.nextStep, t.waitingOn, STATUS[t.status]?.label, ...(t.updates||[]).map(u => u.text)].join(" "));
 const matches = (t, q) => q.split(" ").every(w => searchText(t).includes(w));
 function hl(text){
   const out = esc(text), words = norm(state.q).split(" ").filter(w => w.length > 1);
@@ -469,7 +531,15 @@ function render(){
   $("#tabs").innerHTML = TABS.map(([k, name, f]) => `<button role="tab" class="tab" aria-selected="${!state.q && state.tab===k}" data-tab="${k}">${name}<span class="tab-n">${state.tasks.filter(f).length}</span></button>`).join("");
   const [, , filt] = TABS.find(x => x[0] === state.tab) || TABS[0];
   const q = norm(state.q);
-  let list = q ? state.tasks.filter(t => matches(t, q)) : state.tasks.filter(filt);
+  if (state.tag && state.tag !== "__none" && !allTags().some(g => norm(g) === norm(state.tag))) state.tag = "";
+  const tagK = state.tag === "__none" ? "" : norm(state.tag), byTag = t => !tagK || tagsOf(t).some(g => norm(g) === tagK);
+  let list = q ? state.tasks.filter(t => matches(t, q)) : state.tasks.filter(t => filt(t) && byTag(t));
+  const inTab = q ? [] : state.tasks.filter(filt), tags = allTags();
+  $("#projbar").innerHTML = (q || !tags.length) ? "" : `<span class="label">Projects</span>
+    <button class="pf all" data-tag="" aria-pressed="${!state.tag}">All<span class="n">${inTab.length}</span></button>` +
+    tags.map(g => `<button class="pf ${tagClass(g)}" data-tag="${esc(g)}" aria-pressed="${norm(g)===norm(state.tag)}">${esc(g)}<span class="n">${inTab.filter(t => tagsOf(t).some(x => norm(x)===norm(g))).length}</span></button>`).join("") +
+    `<button class="pf all" data-tag="__none" aria-pressed="${state.tag==="__none"}">No project<span class="n">${inTab.filter(t => !tagsOf(t).length).length}</span></button>`;
+  if (state.tag === "__none" && !q) list = state.tasks.filter(t => filt(t) && !tagsOf(t).length);
   list = q ? list.sort((a,b) => (isOpen(b) - isOpen(a)) || (a.due||"9999").localeCompare(b.due||"9999"))
     : state.tab === "closed" ? list.sort((a,b)=>(b.closedAt||"").localeCompare(a.closedAt||""))
     : list.sort((a,b) => (a.due||"9999").localeCompare(b.due||"9999") || prio(b)-prio(a));
@@ -490,6 +560,7 @@ function render(){
   const noAI = !state.sample;
   $("#sortBtn").disabled = noAI || !state.canWrite; $("#planBtn").disabled = noAI || !state.canWrite;
   $("#addBtn").disabled = !state.canWrite; $("#uploadBtn").disabled = noAI || !state.canWrite;
+  if (state.focusTag) { document.getElementById("tagin-" + state.focusTag)?.focus(); state.focusTag = null; }
   if (state.focusUpdate) { const el = document.getElementById("u-" + state.focusUpdate); if (el) el.focus(); state.focusUpdate = null; }
 }
 
@@ -503,6 +574,7 @@ function rowHTML(t){
       <button class="r-title" data-act="open" data-id="${t.id}" aria-expanded="${state.openEdit===t.id}">
         <span class="t-title"><span class="pri ${open?t.priority:"low"}" aria-hidden="true"></span><span>${hl(t.title)}</span>
           ${t.updates?.length ? `<span class="ucount" title="Updates">${t.updates.length}</span>` : ""}</span>
+        ${tagsOf(t).length ? `<span class="tagrow">${tagsOf(t).map(tagChip).join("")}</span>` : ""}
         ${lu ? `<span class="r-sub">${hl(lu.text)} <i>· ${ago(lu.at)}</i></span>` : t.nextStep && open ? `<span class="r-sub">Next: ${esc(t.nextStep)}</span>` : ""}
       </button>
       <label class="r-status"><span class="vh">Status</span>
@@ -539,6 +611,10 @@ function detailHTML(t){
       <label>Priority<select id="e-prio-${t.id}" name="priority">${["high","med","low"].map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
       <label>Waiting on / owner<input id="e-who-${t.id}" name="waitingOn" value="${esc(t.waitingOn)}" placeholder="Name"></label>
       <label>Time (minutes)<input id="e-est-${t.id}" type="number" min="0" step="5" name="estimate" value="${t.estimate||""}"></label>
+      <div class="wide"><label for="tagin-${t.id}">Projects</label>
+        <div class="tagedit">${tagsOf(t).map(g => `<span class="tag ${tagClass(g)}">${esc(g)}${state.canWrite ? `<button type="button" data-untag="${esc(g)}" data-id="${t.id}" aria-label="Remove ${esc(g)}">×</button>` : ""}</span>`).join("")}
+          ${state.canWrite ? `<input id="tagin-${t.id}" list="taglist" data-tagin="${t.id}" placeholder="${tagsOf(t).length ? "Add another…" : "Add a project, e.g. Catering"}" autocomplete="off">` : ""}</div>
+        <datalist id="taglist">${allTags().map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
       <label class="wide">Next step<input id="e-next-${t.id}" name="nextStep" value="${esc(t.nextStep)}"></label>
       <label class="wide">Notes<textarea id="e-notes-${t.id}" name="notes" rows="3">${esc(t.notes)}</textarea></label>
       ${state.canWrite ? `<div class="wide formbar">
@@ -555,7 +631,7 @@ const col = () => state.db.collection("tasks");
 function newTask(p){
   return { title: String(p.title||"").slice(0,300), notes: String(p.notes||""), priority: ["high","med","low"].includes(p.priority)?p.priority:"med",
     due: /^\d{4}-\d{2}-\d{2}$/.test(p.due||"") ? p.due : "", estimate: Number(p.estimate)||0, nextStep: String(p.nextStep||""),
-    status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
+    status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), tags: mergeTags(Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : [])), updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
 }
 const norm = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const findDup = title => state.tasks.find(t => isOpen(t) && norm(t.title) === norm(title));
@@ -583,8 +659,9 @@ $("#addBtn").onclick = async () => {
   } catch(e){ flash("#capMsg", "Couldn't save your tasks (" + (e.code || "error") + "). Your text is still in the box; try again.", true); }
 };
 
-const TASK_FORMAT = `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
-Use the person's own words for things (for example "Uniforms", never "Team Wear"). Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.`;
+const taskFormat = () => `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "tags": 1-2 project names, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
+Use the person's own words for things (for example "Uniforms", never "Team Wear"). Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.
+Projects already in use: ${allTags().join(", ") || "(none yet)"}. Reuse one of these whenever it fits; only make up a new short project name when the work clearly belongs to a different project.`;
 
 async function extractTasks(prompt, opts = {}, source = ""){
   const items = await state.sample.json(prompt, { modelTier: "default", ...opts });
@@ -603,7 +680,7 @@ $("#sortBtn").onclick = async () => {
   $("#sortBtn").disabled = true; flash("#capMsg","Claude is sorting it…");
   try {
     const n = await extractTasks(`You turn a person's brain-dump of work into a clean task list. Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
-${TASK_FORMAT}
+${taskFormat()}
 
 Brain-dump:
 ${text}`);
@@ -655,7 +732,7 @@ $("#fileIn").onchange = async () => {
       const got = await readFile(f);
       const intro = `Below is a document the person uploaded ("${f.name}"). Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
 Pull out the work THEY need to do: action items, requests made of them, deadlines, follow-ups, things to prepare or reply to. Ignore background information that needs no action. If there is nothing to do, reply [].
-${TASK_FORMAT}`;
+${taskFormat()}`;
       flash("#capMsg", `Claude is reading ${f.name}…`);
       if (got.image) {
         const lim = await state.sample.limits().catch(() => null);
@@ -796,21 +873,22 @@ function renderTalk(pending){
   $("#sendBtn").disabled = state.talking || !state.sample || !state.canWrite;
 }
 
-const taskLine = t => `[${t.id}] ${t.title} | ${STATUS[t.status]?.label || t.status} | ${t.progress||0}% done${t.waitingOn ? " | waiting on/owner: " + t.waitingOn : ""}${lastUpdate(t) ? " | latest update: " + lastUpdate(t).text.slice(0,140) : ""} | priority ${t.priority} | ${t.due ? "due " + t.due : "no date"} | ${t.estimate ? t.estimate + " min" : "no estimate"}${t.nextStep ? " | next: " + t.nextStep : ""}`;
+const taskLine = t => `[${t.id}] ${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | ${STATUS[t.status]?.label || t.status} | ${t.progress||0}% done${t.waitingOn ? " | waiting on/owner: " + t.waitingOn : ""}${lastUpdate(t) ? " | latest update: " + lastUpdate(t).text.slice(0,140) : ""} | priority ${t.priority} | ${t.due ? "due " + t.due : "no date"} | ${t.estimate ? t.estimate + " min" : "no estimate"}${t.nextStep ? " | next: " + t.nextStep : ""}`;
 function chatTools(actions){
   const find = id => { const t = state.tasks.find(x => x.id === String(id)); if (!t) throw new Error("No task with id " + id); return t; };
   return [
     { name: "add_task", description: "Add a new task to the person's list. Returns the new task id. Check the task list first: never add something that is already there.",
-      inputSchema: { type:"object", properties: { title:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["title"] },
+      inputSchema: { type:"object", properties: { title:{type:"string"}, tags:{type:"array",items:{type:"string"},description:"project names; reuse existing ones"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["title"] },
       async execute(i){ const r = await addTask(i);
         if (r.dup) return { id: r.id, note: "Already on the board with this id; not added again. Use update_task if something changed." };
         actions.push("Added: " + String(i.title)); renderTalk(state.pendingTalk); return { id: r.id }; } },
     { name: "update_task", description: "Change an existing task by id: mark it done, in progress (doing), back to todo, or dropped (not needed); or change its title, due date, priority, estimate, next step or notes.",
-      inputSchema: { type:"object", properties: { id:{type:"string"}, status:{type:"string",enum:["todo","doing","waiting","stuck","review","done","dropped"],description:"todo=Not started, doing=Working on it, waiting=Waiting on someone, stuck, review=Ready for review, done, dropped=Not needed"}, progress:{type:"number",description:"0-100 percent done"}, waitingOn:{type:"string",description:"person it is waiting on or who owns the next action"}, title:{type:"string"}, due:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, estimate:{type:"number"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["id"] },
+      inputSchema: { type:"object", properties: { id:{type:"string"}, status:{type:"string",enum:["todo","doing","waiting","stuck","review","done","dropped"],description:"todo=Not started, doing=Working on it, waiting=Waiting on someone, stuck, review=Ready for review, done, dropped=Not needed"}, progress:{type:"number",description:"0-100 percent done"}, waitingOn:{type:"string",description:"person it is waiting on or who owns the next action"}, tags:{type:"array",items:{type:"string"},description:"the full new list of project names"}, title:{type:"string"}, due:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, estimate:{type:"number"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["id"] },
       async execute(i){
         const t = find(i.id), p = {};
         for (const k of ["title","due","priority","nextStep","notes","waitingOn"]) if (i[k] !== undefined) p[k] = String(i[k]);
         if (i.estimate !== undefined) p.estimate = Number(i.estimate) || 0;
+        if (Array.isArray(i.tags)) p.tags = mergeTags(i.tags);
         if (i.status && STATUS[i.status]) Object.assign(p, statusPatch(t, i.status));
         if (i.progress !== undefined) p.progress = Math.max(0, Math.min(100, Math.round(Number(i.progress) / 10) * 10 || 0));
         await col().doc(t.id).update(p);
@@ -842,6 +920,8 @@ Your jobs:
 
 Current "where you're at" note:
 ${state.status?.text || "(none yet)"}
+
+Projects in use: ${allTags().join(", ") || "(none yet)"}. Tag new tasks with the right project, reusing these names.
 
 Their tasks right now:
 ${state.tasks.map(taskLine).join("\n") || "(no tasks yet)"}`;
@@ -886,7 +966,7 @@ function weekFacts(w){
   const nextWeek = open.filter(t => { const d = parseDay(t.due); return d && d >= w.end && d < nextWeekEnd; });
   return { done, dropped, open, moved, overdue, nextWeek };
 }
-const factLine = t => `- ${t.title} | ${STATUS[t.status]?.label || t.status} | ${t.status === "done" ? 100 : (t.progress||0)}%${t.due ? " | due " + t.due : ""}${t.waitingOn ? " | waiting on " + t.waitingOn : ""}${(t.updates||[]).length ? " | updates: " + t.updates.slice(-4).map(u => u.text).join(" / ").slice(0, 400) : ""}`;
+const factLine = t => `- ${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | ${STATUS[t.status]?.label || t.status} | ${t.status === "done" ? 100 : (t.progress||0)}%${t.due ? " | due " + t.due : ""}${t.waitingOn ? " | waiting on " + t.waitingOn : ""}${(t.updates||[]).length ? " | updates: " + t.updates.slice(-4).map(u => u.text).join(" / ").slice(0, 400) : ""}`;
 
 $("#repBtn").onclick = async () => {
   if (!state.tasks.length) return flash("#repMsg", "There's nothing on your board yet, so there's nothing to report.", true);
@@ -903,7 +983,7 @@ Waiting on others (who, and for what)
 Overdue or at risk
 Next week (what is due next week and what to tackle first)
 Dropped (only if any)
-Keep it factual and only use the information below. Under 350 words.
+Where it helps, group lines by project (shown in [brackets]). Keep it factual and only use the information below. Under 350 words.
 
 Completed this week (${f.done.length}):
 ${f.done.map(factLine).join("\n") || "(none)"}
