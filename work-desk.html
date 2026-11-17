@@ -114,9 +114,82 @@ button.link:hover{color:var(--accent);background:var(--accent-soft)}
 
 /* desk grid */
 .desk{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"capture overview";gap:20px;align-items:start}
-.capture{grid-area:capture}
-.overview{grid-area:overview}
 @media (max-width:820px){.desk{grid-template-columns:minmax(0,1fr);grid-template-areas:"capture" "overview"}}
+
+/* slim check-in */
+.checkin{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ci-where{display:flex;align-items:center;gap:8px;min-width:0;font-size:.85rem}
+.ci-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--sun-ink);background:var(--sun-soft);border-radius:6px;padding:2px 7px;flex:none}
+.ci-note{all:unset;cursor:pointer;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);border-radius:4px}
+.ci-note:focus-visible{outline:2px solid var(--accent)}
+.ci-note[aria-expanded="true"]{white-space:pre-wrap}
+.ci-where .where-when{flex:none;font-size:.72rem;color:var(--muted)}
+.ci-where .link{flex:none}
+.checkin .composer{gap:6px;align-items:center}
+.checkin .composer textarea{padding:8px 12px;min-height:40px}
+.ci-thread{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:8px}
+.ci-thread .thread{max-height:340px;min-height:0}
+.mic{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border-radius:50%;flex:none;color:var(--accent);border-color:var(--line)}
+.mic svg{width:20px;height:20px}
+.mic.big{width:auto;height:auto;border-radius:999px;padding:8px 14px;display:inline-flex;gap:6px;align-items:center;font-weight:700}
+.mic.listening{background:var(--hot);border-color:var(--hot);color:#fff;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px var(--hot-soft)}}
+.partial{font-size:.85rem;color:var(--muted);font-style:italic;min-height:0}
+.partial:empty{display:none}
+@media (max-width:560px){.ci-where{flex-wrap:wrap}.ci-note{flex-basis:100%;order:3}}
+
+/* section tabs */
+.views{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:5px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;box-shadow:var(--shadow)}
+.view-tab{flex:1;border:none;background:none;border-radius:10px;padding:10px 12px;font-weight:700;color:var(--muted);display:flex;gap:6px;justify-content:center;align-items:center}
+.view-tab:hover{background:var(--raised);color:var(--ink)}
+.view-tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.view-tab[aria-selected="true"] .tab-n{background:rgba(255,255,255,.22);color:inherit}
+.view{display:flex;flex-direction:column;gap:16px}
+[hidden]{display:none!important}
+
+/* compact today */
+.today{padding:14px 16px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:18px;align-items:start}
+.td-left{display:flex;gap:14px;align-items:center;min-width:0}
+.today .ring{width:60px;height:60px;flex:none}
+.today .ring circle{fill:none;stroke-width:9}
+.today .ring .track{stroke:var(--line)}
+.today .ring .val{stroke:var(--sun);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.today .ring text{fill:var(--ink);font-family:var(--f-display);font-weight:800;font-size:22px}
+.td-text{min-width:0}
+.td-text h2{font-size:1.2rem;font-weight:800}
+.td-text p{margin:2px 0 0;font-size:.88rem;color:var(--muted)}
+.td-text p b{color:var(--ink);font-weight:600}
+.td-plan{display:flex;flex-direction:column;gap:6px;min-width:0;border-left:1px solid var(--line);padding-left:18px}
+.td-plan .plan-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.td-plan h3{font-size:.95rem}
+button.small{padding:5px 11px;font-size:.82rem}
+.planlist{display:flex;flex-direction:column;gap:2px}
+.planlist ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.planlist li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px;align-items:baseline;padding:4px 6px;border-radius:8px;font-size:.88rem}
+.planlist li button{all:unset;cursor:pointer;font-weight:600;overflow-wrap:anywhere}
+.planlist li button:hover{color:var(--accent)}
+.planlist li small{display:block;color:var(--muted);font-size:.78rem}
+.planlist li.now{background:var(--sun-soft)}
+.planlist .pt{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.planlist .pf-line{font-size:.8rem;color:var(--muted);margin:4px 6px 0}
+.planlist .pf-line b{color:var(--ink)}
+.planlist .focus{font-size:.85rem;margin:0 6px 4px;font-weight:600}
+@media (max-width:760px){.today{grid-template-columns:minmax(0,1fr)}.td-plan{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:10px}}
+
+/* capture */
+.dumpwrap{position:relative}
+.dumpwrap .mic.big{position:absolute;right:10px;bottom:10px}
+.capture .btnrow button{flex:1 1 auto}
+.hint-line{font-size:.8rem;color:var(--muted);margin:0;line-height:1.5}
+.hint-line b{color:var(--ink);font-weight:600}
+.topdate{margin-left:8px}
+
+/* report stats table */
+.rep-table{border-collapse:collapse;font-size:.82rem;width:100%;max-width:520px}
+.rep-table th,.rep-table td{text-align:right;padding:4px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.rep-table th:first-child,.rep-table td:first-child{text-align:left}
+.rep-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rep-table-wrap{overflow-x:auto}
 
 /* weekly reports */
 .reports{padding:18px;display:flex;flex-direction:column;gap:14px}
@@ -279,42 +352,25 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
     <div class="brand">
       <div class="mark" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg></div>
       <h1>Work Desk</h1>
+      <span class="label topdate" id="todayLabel">Today</span>
     </div>
     <div class="sync" id="conn">Connecting…</div>
   </div>
 
-  <section class="hero" aria-labelledby="greet">
-    <div>
-      <div class="label" id="todayLabel">Today</div>
-      <h2 id="greet">Good morning</h2>
-      <p class="hero-sum" id="heroSummary">Loading your day…</p>
-      <div class="progress">
-        <svg class="ring" viewBox="0 0 84 84" role="img" aria-labelledby="ringLabel">
-          <circle class="track" cx="42" cy="42" r="36"/>
-          <circle class="val" id="ringVal" cx="42" cy="42" r="36" transform="rotate(-90 42 42)" stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
-          <text id="ringText" x="42" y="50" text-anchor="middle">0</text>
-        </svg>
-        <p id="ringLabel"><b id="ringHead">Nothing due today</b><span id="ringSub">Tick tasks off as you finish them.</span></p>
-      </div>
-    </div>
-    <div class="plan">
-      <div class="plan-head">
-        <h3>Today's plan</h3>
-        <button id="planBtn">Plan my day</button>
-      </div>
-      <pre id="planText">No plan yet. Press "Plan my day" and Claude will put your open tasks in order, with times, for today.</pre>
-      <span class="msg" id="planMsg" role="status"></span>
-    </div>
-  </section>
-
-  <section class="card talk" aria-labelledby="talkH">
-    <div class="where">
-      <div class="label">Where you're at</div>
-      <h2 id="talkH">Check-in</h2>
-      <p id="whereText" class="where-text">Nothing yet. Tell Claude what you're working on and it will keep a running note here, so you can pick up where you left off.</p>
+  <section class="card checkin" aria-label="Check-in">
+    <div class="ci-where">
+      <span class="ci-label">Where you're at</span>
+      <button type="button" class="ci-note" id="whereToggle" aria-expanded="false" title="Show the full note"><span id="whereText">Nothing yet. Tell Claude what you're doing and it keeps a running note here.</span></button>
       <span class="where-when" id="whereWhen"></span>
+      <button type="button" class="link" id="threadBtn" aria-expanded="false" aria-controls="threadWrap">Conversation</button>
     </div>
-    <div class="convo">
+    <form class="composer" id="composer">
+      <button type="button" class="mic" data-mic="say" aria-label="Speak your check-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <textarea id="say" rows="1" placeholder="Check in…" aria-label="Check-in message"></textarea>
+      <button class="primary" type="submit" id="sendBtn">Send</button>
+    </form>
+    <div class="partial" id="partial-say" aria-live="polite"></div>
+    <div class="ci-thread" id="threadWrap" hidden>
       <div class="thread" id="thread" aria-live="polite"></div>
       <div class="starters" id="starters">
         <button class="starter" data-say="Here's what I've got on today: ">Here's my day…</button>
@@ -322,60 +378,84 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
         <button class="starter" data-say="Where am I up to? Give me a quick recap.">Where am I up to?</button>
         <button class="starter" data-say="I've just finished ">I've just finished…</button>
       </div>
-      <form class="composer" id="composer">
-        <textarea id="say" rows="1" placeholder="What's happening? Done, next, stuck…" aria-label="Message"></textarea>
-        <button class="primary" type="submit" id="sendBtn">Send</button>
-      </form>
-      <span class="msg" id="talkMsg" role="status"></span>
     </div>
+    <span class="msg" id="talkMsg" role="status"></span>
   </section>
 
-  <section class="card boardcard" aria-labelledby="boardH">
-    <div class="board-top">
-      <h2 id="boardH">Board</h2>
-      <span class="msg" id="boardMsg" role="status"></span>
-      <div class="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input type="search" id="q" placeholder="Search tasks, notes, updates, people…" aria-label="Search tasks" autocomplete="off">
-      </div>
-    </div>
-    <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
-    <div class="projbar" id="projbar" aria-label="Filter by project"></div>
-    <div class="board" id="board"></div>
-  </section>
+  <nav class="views" role="tablist" aria-label="Sections">
+    <button role="tab" class="view-tab" data-view="add" aria-controls="view-add">+ Add tasks</button>
+    <button role="tab" class="view-tab" data-view="tasks" aria-controls="view-tasks">Tasks <span class="tab-n" id="vtOpen"></span></button>
+    <button role="tab" class="view-tab" data-view="reports" aria-controls="view-reports">Reports</button>
+  </nav>
 
-  <section class="card reports" aria-labelledby="repH">
-    <div class="rep-top">
-      <div><div class="label">End of week</div><h2 id="repH">Weekly reports</h2></div>
-      <button class="primary" id="repBtn">Write this week's report</button>
-    </div>
-    <div class="nudge" id="repNudge" hidden>It's the end of the week. Write your report to see what you got done.</div>
-    <span class="msg" id="repMsg" role="status"></span>
-    <div id="repList"></div>
-  </section>
-
-  <div class="desk">
+  <div class="view" id="view-add" role="tabpanel" hidden>
     <section class="card capture" aria-labelledby="capH">
       <h3 id="capH">What's on your plate?</h3>
-      <textarea id="dump" placeholder="Write it how you'd say it:&#10;Send Acme the revised quote by Thursday&#10;! Chase unpaid invoice from March&#10;Prep slides for Monday's team meeting, about 2 hours"></textarea>
+      <div class="dumpwrap">
+        <textarea id="dump" placeholder="Type or press the microphone and say it:&#10;Send Acme the revised quote by Thursday&#10;! Chase unpaid invoice from March&#10;Prep slides for Monday's team meeting, about 2 hours"></textarea>
+        <button type="button" class="mic big" data-mic="dump" aria-label="Speak your tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Speak</span></button>
+      </div>
+      <div class="partial" id="partial-dump" aria-live="polite"></div>
       <div class="btnrow">
         <button class="primary" id="sortBtn">Sort it for me</button>
         <button id="addBtn">Add as written</button>
-      </div>
-      <div class="btnrow">
-        <button id="uploadBtn" style="flex:1">Upload a document or photo</button>
+        <button id="uploadBtn">Upload a document or photo</button>
         <input type="file" id="fileIn" multiple hidden accept=".pdf,.docx,.txt,.md,.csv,.eml,.rtf,.html,image/*">
       </div>
       <span class="msg" id="capMsg" role="status"></span>
-      <div class="tips">
-        <div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span><b>Speak it.</b> Tap the box, then the microphone on your keyboard, and talk. Then press "Sort it for me".</span></div>
-        <div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span><b>Upload it.</b> PDFs, Word documents, text files or a photo of notes. Claude pulls out the tasks; the file isn't stored.</span></div>
-        <div class="tip"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span><b>Add as written</b> puts one task on each line. Start a line with ! to mark it urgent.</span></div>
+      <p class="hint-line"><b>Sort it for me</b> splits what you say into tasks with dates, projects and first steps. <b>Add as written</b> adds one task per line (start a line with ! for urgent). Uploads: PDFs, Word, text or a photo of notes; files aren't stored.</p>
+    </section>
+  </div>
+
+  <div class="view" id="view-tasks" role="tabpanel" hidden>
+    <section class="card today" aria-labelledby="greet">
+      <div class="td-left">
+        <svg class="ring" viewBox="0 0 84 84" role="img" aria-labelledby="ringHead">
+          <circle class="track" cx="42" cy="42" r="36"/>
+          <circle class="val" id="ringVal" cx="42" cy="42" r="36" transform="rotate(-90 42 42)" stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
+          <text id="ringText" x="42" y="50" text-anchor="middle">0</text>
+        </svg>
+        <div class="td-text">
+          <h2 id="greet">Good morning</h2>
+          <p id="heroSummary">Loading your day…</p>
+          <p class="td-ring"><b id="ringHead">Nothing due today</b> · <span id="ringSub"></span></p>
+        </div>
+      </div>
+      <div class="td-plan">
+        <div class="plan-head"><h3>Today's plan</h3><button id="planBtn" class="small">Plan my day</button></div>
+        <div id="planList" class="planlist"><p class="dim">No plan yet. Press "Plan my day" for a short, timed list.</p></div>
+        <span class="msg" id="planMsg" role="status"></span>
       </div>
     </section>
 
+    <section class="card boardcard" aria-labelledby="boardH">
+      <div class="board-top">
+        <h2 id="boardH">Board</h2>
+        <span class="msg" id="boardMsg" role="status"></span>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input type="search" id="q" placeholder="Search tasks, notes, updates, people…" aria-label="Search tasks" autocomplete="off">
+        </div>
+      </div>
+      <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
+      <div class="projbar" id="projbar" aria-label="Filter by project"></div>
+      <div class="board" id="board"></div>
+    </section>
+  </div>
+
+  <div class="view" id="view-reports" role="tabpanel" hidden>
+    <section class="card reports" aria-labelledby="repH">
+      <div class="rep-top">
+        <div><div class="label">End of week</div><h2 id="repH">Weekly reports</h2></div>
+        <button class="primary" id="repBtn">Write this week's report</button>
+      </div>
+      <div class="nudge" id="repNudge" hidden>It's the end of the week. Write your report to see what you got done.</div>
+      <span class="msg" id="repMsg" role="status"></span>
+      <div id="repList"></div>
+    </section>
+
     <section class="card overview" aria-labelledby="ovH">
-      <h3 id="ovH" class="label">Where you are</h3>
+      <h3 id="ovH" class="label">Where you are now</h3>
       <div class="stats">
         <div class="stat hot"><b id="sOver">0</b><span>Overdue</span></div>
         <div class="stat sun"><b id="sToday">0</b><span>Due today</span></div>
@@ -556,7 +636,8 @@ function render(){
 
   for (const [k,v] of Object.entries(keep)) { const el = document.getElementById(k); if (el) el.value = v; }
   if (focusId && !state.focusUpdate) document.getElementById(focusId)?.focus();
-  if (state.plan?.text) $("#planText").textContent = state.plan.text + (state.plan.date !== todayStr ? `\n\n(This plan is from ${state.plan.date}. Press "Plan my day" for a fresh one.)` : "");
+  renderPlan();
+  $("#vtOpen").textContent = open.length;
   const noAI = !state.sample;
   $("#sortBtn").disabled = noAI || !state.canWrite; $("#planBtn").disabled = noAI || !state.canWrite;
   $("#addBtn").disabled = !state.canWrite; $("#uploadBtn").disabled = noAI || !state.canWrite;
@@ -647,7 +728,8 @@ async function patch(id, data){
   try { await col().doc(id).update(data); }
   catch(e){ if (e.code === "invalid_argument") { state.canWrite = false; render(); } else flash("#capMsg", "Couldn't save that change. Try again.", true); }
 }
-function flash(sel, text, err){ const el = $(sel); el.textContent = text; el.classList.toggle("err", !!err); }
+function flash(sel, text, err){ const el = $(sel); el.textContent = text; el.classList.toggle("err", !!err);
+  if (sel === "#capMsg" && !err && /^Added [1-9]/.test(text)) { const b = document.createElement("button"); b.className = "link"; b.dataset.view = "tasks"; b.textContent = "View tasks →"; el.append(" ", b); } }
 
 $("#addBtn").onclick = async () => {
   const lines = $("#dump").value.split("\n").map(s => s.trim()).filter(Boolean);
@@ -754,22 +836,28 @@ ${taskFormat()}`;
 $("#planBtn").onclick = async () => {
   const open = state.tasks.filter(isOpen);
   if (!open.length) return flash("#planMsg","Add some tasks first.", true);
-  $("#planBtn").disabled = true; flash("#planMsg",""); $("#planText").textContent = "Thinking…";
-  const list = open.map(t => `- ${t.title} | priority ${t.priority} | ${t.due?fmtDue(t.due)+" ("+t.due+")":"no date"} | ${t.estimate?fmtEst(t.estimate):"no estimate"} | ${STATUS[t.status]?.label || t.status}, ${t.progress||0}% done${t.waitingOn?", waiting on "+t.waitingOn:""}${t.nextStep?" | next: "+t.nextStep:""}`).join("\n");
+  $("#planBtn").disabled = true; flash("#planMsg","Planning…");
+  const now = new Date(), startHM = pad(now.getHours() + (now.getMinutes() > 30 ? 1 : 0)) + ":" + (now.getMinutes() > 0 && now.getMinutes() <= 30 ? "30" : "00");
+  const list = open.map(t => `- ${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | priority ${t.priority} | ${t.due?fmtDue(t.due)+" ("+t.due+")":"no date"} | ${t.estimate?fmtEst(t.estimate):"no estimate"} | ${STATUS[t.status]?.label || t.status}, ${t.progress||0}% done${t.waitingOn?", waiting on "+t.waitingOn:""}${t.nextStep?" | next: "+t.nextStep:""}`).join("\n");
   try {
-    const { text } = await state.sample(
-`You are a calm, practical work organizer. It is ${new Date().toLocaleString()}.
-Build today's plan from these open tasks. Assume a working day ending at 17:30 and about 6 focused hours.
-Format, plain text, no markdown symbols:
-First line: one sentence on where they stand (what's overdue, what matters most).
-Then time blocks, one per line, like "09:00–10:00  Task — what to get done in this block".
-Then "Get ahead:" with 1-3 lines on what to start early for later deadlines.
-Then "Can wait:" listing what they should leave for another day. Keep it under 20 lines.
+    const plan = await state.sample.json(
+`Make a short plan for the rest of today. It is ${now.toLocaleString()}. The working day ends at 17:30.
+Reply with ONLY this JSON:
+{"focus": "one sentence, at most 14 words, naming the single most important thing today",
+ "blocks": [{"time": "HH:MM", "task": "the task title copied EXACTLY from the list", "do": "what to get done, at most 8 words"}],
+ "getAhead": "at most 12 words, or empty",
+ "canWait": "up to 4 short task titles, comma-separated, or empty"}
+Rules: at most 6 blocks, first block starts at ${startHM}, times in order. Overdue and due-today work first, then urgent, then things that unblock other people. Skip tasks that are only waiting on someone else unless a chase is needed.
 
-Tasks:
-${list}`, { cache: false, onText: ({text}) => { $("#planText").textContent = text; } });
-    await state.db.doc("meta/plan").set({ text, date: iso(new Date()) });
-  } catch(e){ $("#planText").textContent = state.plan?.text || "No plan yet."; flash("#planMsg", e.code==="not_granted" ? "Claude wasn't allowed to plan." : "Couldn't make a plan. Try again.", true); }
+Open tasks:
+${list}`, { cache: false });
+    if (!plan || !Array.isArray(plan.blocks)) throw { code: "bad" };
+    const doc = { date: iso(now), focus: String(plan.focus || "").slice(0, 200), getAhead: String(plan.getAhead || "").slice(0, 200), canWait: String(plan.canWait || "").slice(0, 300),
+      blocks: plan.blocks.slice(0, 6).map(b => ({ time: String(b.time || "").slice(0, 5), task: String(b.task || "").slice(0, 200), do: String(b.do || "").slice(0, 120) })) };
+    doc.text = [doc.focus, ...doc.blocks.map(b => `${b.time} ${b.task}`)].join("\n");
+    await state.db.doc("meta/plan").set(doc);
+    flash("#planMsg", "");
+  } catch(e){ flash("#planMsg", e.code==="not_granted" ? "Claude wasn't allowed to plan." : "Couldn't make a plan. Try again.", true); }
   finally { $("#planBtn").disabled = false; }
 };
 
@@ -909,6 +997,7 @@ async function talk(text){
   const userMsg = { role: "user", text, at: new Date().toISOString() };
   const actions = [];
   state.pendingTalk = { user: text, reply: "", actions };
+  if ($("#threadWrap").hidden) $("#threadBtn").click();
   renderTalk(state.pendingTalk);
   const rules = `You are the person's work companion inside their Work Desk. You talk like a calm, practical colleague: short replies (usually under 120 words), plain text, no markdown headings or bold. Today is ${new Date().toLocaleString()} (ISO date ${iso(new Date())}).
 Use their own words for things (for example "Uniforms", never "Team Wear").
@@ -967,6 +1056,23 @@ function weekFacts(w){
   const nextWeek = open.filter(t => { const d = parseDay(t.due); return d && d >= w.end && d < nextWeekEnd; });
   return { done, dropped, open, moved, overdue, nextWeek };
 }
+const fmtD = s => { const d = typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) ? parseDay(s) : new Date(s); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); };
+const preciseLine = t => {
+  const parts = [`- [${tagsOf(t).join(", ") || "No project"}] ${t.title}`, STATUS[t.status]?.label || t.status];
+  if (t.status === "done" || t.status === "dropped") parts.push((t.status === "done" ? "completed " : "dropped ") + fmtD(t.closedAt));
+  else parts.push(`${t.progress||0}% done`);
+  if (t.due) { const n = daysFrom(t.due); parts.push(`due ${fmtD(t.due)}${isOpen(t) && n < 0 ? ` (${-n} day${n===-1?"":"s"} overdue)` : ""}`); }
+  if (t.waitingOn) { const lu = lastUpdate(t); parts.push(`waiting on ${t.waitingOn}${lu ? " since " + fmtD(lu.at) : ""}`); }
+  if (t.nextStep && isOpen(t)) parts.push("next step: " + t.nextStep);
+  const ups = (t.updates||[]).slice(-3).map(u => `${fmtD(u.at)}: ${u.text}`);
+  if (ups.length) parts.push("updates: " + ups.join(" / ").slice(0, 400));
+  return parts.join(" | ");
+};
+function projectStats(w, f){
+  const out = {}, add = (t, k) => { for (const g of (tagsOf(t).length ? tagsOf(t) : ["No project"])) { out[g] ||= { completed: 0, dropped: 0, open: 0, overdue: 0 }; out[g][k]++; } };
+  f.done.forEach(t => add(t, "completed")); f.dropped.forEach(t => add(t, "dropped")); f.open.forEach(t => add(t, "open")); f.overdue.forEach(t => add(t, "overdue"));
+  return out;
+}
 const factLine = t => `- ${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | ${STATUS[t.status]?.label || t.status} | ${t.status === "done" ? 100 : (t.progress||0)}%${t.due ? " | due " + t.due : ""}${t.waitingOn ? " | waiting on " + t.waitingOn : ""}${(t.updates||[]).length ? " | updates: " + t.updates.slice(-4).map(u => u.text).join(" / ").slice(0, 400) : ""}`;
 
 $("#repBtn").onclick = async () => {
@@ -975,40 +1081,61 @@ $("#repBtn").onclick = async () => {
   $("#repBtn").disabled = true; flash("#repMsg", "Claude is writing your report…");
   const range = `${w.start.toLocaleDateString(undefined,{day:"numeric",month:"short"})} to ${new Date(w.end.getTime()-DAY).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}`;
   try {
+    const waiting = f.open.filter(t => t.status === "waiting" || t.status === "stuck" || t.waitingOn);
     const { text } = await state.sample(
-`Write a short end-of-week work report for this person, for the week of ${range}. Plain text, no markdown symbols, no bold. Use these sections with these exact headings on their own lines:
-Summary (2-3 sentences: how the week went overall)
-Completed (every completed task, one line each, with a few words of what it involved if the updates say)
-Moved forward (open tasks that progressed this week, with progress and what's left)
-Waiting on others (who, and for what)
-Overdue or at risk
-Next week (what is due next week and what to tackle first)
-Dropped (only if any)
-Where it helps, group lines by project (shown in [brackets]). Keep it factual and only use the information below. Under 350 words.
+`Write a precise end-of-week work report for ${range}. Today is ${fmtD(new Date())}.
+Plain text only. No markdown symbols, except "- " at the start of each list line.
 
-Completed this week (${f.done.length}):
-${f.done.map(factLine).join("\n") || "(none)"}
+Precision rules:
+- Use only the facts below. Never guess, round up or add anything.
+- Copy task names exactly. Start every list line with the project in brackets, e.g. "- [FWCC27] Send registration forms: 10%, due Fri 13 Nov (4 days overdue)".
+- Never write "several", "some", "a number of", "various", "a few" or "many". Give the exact count or list the items.
+- Give exact dates in the form "Mon 16 Nov", exact percentages and the names of people.
+- One task per line. No filler sentences.
 
-Dropped this week (${f.dropped.length}):
-${f.dropped.map(factLine).join("\n") || "(none)"}
+Sections, each heading on its own line followed by its count in brackets, in this order:
+Summary: exactly 2 sentences. Sentence 1 gives the counts: ${f.done.length} completed, ${f.dropped.length} dropped, ${f.open.length} still open, ${f.overdue.length} overdue. Sentence 2 names the single biggest risk and its due date.
+Completed (${f.done.length}): every completed task with the day it was completed and, if the updates say, what was delivered.
+Moved forward (${f.moved.length}): each open task updated this week, with % done, the latest update and what is left.
+Waiting on others (${waiting.length}): "- [Project] Task: waiting on NAME since DATE, for WHAT".
+Overdue (${f.overdue.length}): each with its due date and days overdue.
+Next week (${f.nextWeek.length}): each task due next week with its due date, then one line "Start with: " naming the first 3 tasks to do.
+Dropped (${f.dropped.length}): only if any.
+Leave out any section with 0 items, except Summary and Completed.
 
-Open tasks with updates this week:
-${f.moved.map(factLine).join("\n") || "(none)"}
+COMPLETED THIS WEEK:
+${f.done.map(preciseLine).join("\n") || "(none)"}
 
-All open tasks (${f.open.length}):
-${f.open.map(factLine).join("\n") || "(none)"}
+DROPPED THIS WEEK:
+${f.dropped.map(preciseLine).join("\n") || "(none)"}
 
-Due next week:
-${f.nextWeek.map(factLine).join("\n") || "(none)"}
+OPEN TASKS UPDATED THIS WEEK:
+${f.moved.map(preciseLine).join("\n") || "(none)"}
 
-Current "where you're at" note: ${state.status?.text || "(none)"}`, { cache: false });
+WAITING ON OTHERS:
+${waiting.map(preciseLine).join("\n") || "(none)"}
+
+OVERDUE:
+${f.overdue.map(preciseLine).join("\n") || "(none)"}
+
+DUE NEXT WEEK:
+${f.nextWeek.map(preciseLine).join("\n") || "(none)"}
+
+ALL OTHER OPEN TASKS:
+${f.open.filter(t => !f.moved.includes(t) && !f.overdue.includes(t) && !f.nextWeek.includes(t)).map(preciseLine).join("\n") || "(none)"}`, { cache: false });
     await state.db.doc("reports/" + w.id).set({ week: w.id, range, text, createdAt: new Date().toISOString(), by: "page",
-      stats: { completed: f.done.length, dropped: f.dropped.length, open: f.open.length, overdue: f.overdue.length } });
+      stats: { completed: f.done.length, dropped: f.dropped.length, open: f.open.length, overdue: f.overdue.length, byProject: projectStats(w, f) } });
     flash("#repMsg", "Report saved.");
   } catch(e){ flash("#repMsg", sampleErr(e) || "Couldn't write the report. Try again.", true); }
   finally { $("#repBtn").disabled = false; }
 };
 
+function repTable(bp){
+  if (!bp || !Object.keys(bp).length) return "";
+  const rows = Object.entries(bp).sort((a,b) => (b[1].completed + b[1].open) - (a[1].completed + a[1].open));
+  return `<div class="rep-table-wrap"><table class="rep-table"><thead><tr><th>Project</th><th>Completed</th><th>Dropped</th><th>Still open</th><th>Overdue</th></tr></thead><tbody>${
+    rows.map(([g, v]) => `<tr><td>${g === "No project" ? esc(g) : tagChip(g)}</td><td>${v.completed}</td><td>${v.dropped}</td><td>${v.open}</td><td>${v.overdue ? `<span style="color:var(--hot);font-weight:700">${v.overdue}</span>` : 0}</td></tr>`).join("")}</tbody></table></div>`;
+}
 function renderReports(){
   const w = weekInfo(), day = new Date().getDay(), have = state.reports.some(r => r.week === w.id);
   $("#repNudge").hidden = have || !(day === 5 || day === 6 || day === 0) || !state.tasks.length;
@@ -1019,7 +1146,7 @@ function renderReports(){
         <span class="chip" style="color:var(--ok)">${r.stats?.completed ?? 0} completed</span>
         <span class="chip">${r.stats?.open ?? 0} still open</span>
         ${r.stats?.overdue ? `<span class="chip hot">${r.stats.overdue} overdue</span>` : ""}</span></summary>
-      <div class="rep-body"><pre id="rep-${esc(r.week)}">${esc(r.text)}</pre>
+      <div class="rep-body">${repTable(r.stats?.byProject)}<pre id="rep-${esc(r.week)}">${esc(r.text)}</pre>
         <div class="formbar"><button type="button" data-copy="${esc(r.week)}">Copy report</button>
         <span>Written ${new Date(r.createdAt).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}${r.by === "scheduled" ? " automatically" : ""}</span></div></div>
     </details>`).join("")
@@ -1031,6 +1158,82 @@ document.addEventListener("click", async e => {
   try { await navigator.clipboard.writeText(pre.textContent); b.textContent = "Copied"; }
   catch { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent = "Selected: press Ctrl+C or Cmd+C"; }
   setTimeout(() => b.textContent = "Copy report", 2500);
+});
+
+/* ---------- sections (Add / Tasks / Reports) ---------- */
+const VIEWS = ["add", "tasks", "reports"];
+function showView(v, push){
+  if (!VIEWS.includes(v)) v = "tasks";
+  state.view = v;
+  VIEWS.forEach(k => { $("#view-" + k).hidden = k !== v; document.querySelector(`[data-view="${k}"]`).setAttribute("aria-selected", k === v); });
+  if (push && location.hash !== "#" + v) history.replaceState(null, "", "#" + v);
+  try { localStorage.setItem("wd-view", v); } catch {}
+}
+document.addEventListener("click", e => { const t = e.target.closest("[data-view]"); if (t) showView(t.dataset.view, true); });
+window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+{ let start = location.hash.slice(1); if (!VIEWS.includes(start)) { try { start = localStorage.getItem("wd-view") || "tasks"; } catch { start = "tasks"; } } showView(start); }
+
+$("#threadBtn").onclick = () => { const open = $("#threadWrap").hidden; $("#threadWrap").hidden = !open; $("#threadBtn").setAttribute("aria-expanded", open);
+  $("#threadBtn").textContent = open ? "Hide conversation" : "Conversation"; if (open) { const th = $("#thread"); th.scrollTop = th.scrollHeight; } };
+$("#whereToggle").onclick = () => { const b = $("#whereToggle"); b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") !== "true"); };
+
+/* ---------- today's plan (short, timed list) ---------- */
+function renderPlan(){
+  const p = state.plan, el = $("#planList");
+  if (!p) return;
+  const old = p.date !== iso(new Date());
+  if (Array.isArray(p.blocks) && p.blocks.length) {
+    const nowHM = pad(new Date().getHours()) + ":" + pad(new Date().getMinutes());
+    let cur = -1; p.blocks.forEach((b, i) => { if (!old && String(b.time) <= nowHM) cur = i; });
+    el.innerHTML = (p.focus ? `<p class="focus">${esc(p.focus)}</p>` : "") +
+      `<ol>${p.blocks.map((b, i) => { const t = state.tasks.find(x => norm(x.title) === norm(b.task));
+        return `<li class="${i === cur ? "now" : ""}"><span class="pt">${esc(b.time)}</span><span>${t ? `<button data-open-task="${t.id}">${esc(b.task)}</button>` : `<b>${esc(b.task)}</b>`}${b.do ? `<small>${esc(b.do)}</small>` : ""}</span></li>`; }).join("")}</ol>` +
+      (p.getAhead ? `<p class="pf-line"><b>Get ahead:</b> ${esc(p.getAhead)}</p>` : "") +
+      (p.canWait ? `<p class="pf-line"><b>Can wait:</b> ${esc(p.canWait)}</p>` : "") +
+      (old ? `<p class="pf-line">This plan is from ${esc(p.date)}. Press "Plan my day" for today's.</p>` : "");
+  } else if (p.text) {
+    el.innerHTML = `<p class="pf-line">${esc(p.text.split("\n").filter(Boolean).slice(0, 6).join(" · "))}</p>` + (old ? `<p class="pf-line">From ${esc(p.date)}. Press "Plan my day" for a fresh one.</p>` : "");
+  }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-open-task]"); if (!b) return;
+  state.q = ""; $("#q").value = ""; state.tab = "all"; state.tag = ""; state.openEdit = b.dataset.openTask; showView("tasks", true); render();
+  document.querySelector(`.detail[data-id="${b.dataset.openTask}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); });
+
+/* ---------- microphone (dictation) ---------- */
+let dict = null, dictOff = false, micTarget = null;
+function micButtons(){ return document.querySelectorAll("[data-mic]"); }
+function drawMic(state){
+  micButtons().forEach(b => { const on = state !== "idle" && b.dataset.mic === micTarget; b.classList.toggle("listening", on);
+    b.setAttribute("aria-label", on ? "Stop listening" : "Speak"); const sp = b.querySelector("span"); if (sp) sp.textContent = on ? "Stop" : "Speak"; });
+}
+claude.use("dictation").then(d => {
+  dict = d; if (!d) return;
+  d.onFinal(({ text }) => { if (!micTarget) return; const ta = document.getElementById(micTarget); if (!ta) return;
+    ta.value = ta.value ? ta.value + text : text.replace(/^\s+/, ""); ta.dispatchEvent(new Event("input", { bubbles: true })); });
+  d.onPartial(({ text }) => { if (micTarget) { const p = document.getElementById("partial-" + micTarget); if (p) p.textContent = text ? text + "…" : ""; } });
+  d.onState(({ state: st, reason }) => {
+    drawMic(st);
+    if (st === "idle") { document.querySelectorAll(".partial").forEach(p => p.textContent = "");
+      if (reason === "not_granted" || reason === "unavailable") { dictOff = true; micMsg(reason === "not_granted" ? "The microphone is switched off for this page. Use the microphone on your keyboard instead, or turn it on in the page's Permissions." : "Speaking isn't available here. Use the microphone on your keyboard instead."); }
+      else if (reason === "upstream_error" || reason === "rate_limited") micMsg("The microphone stopped. Press it to try again."); }
+  });
+});
+function micMsg(text){ flash(micTarget === "dump" ? "#capMsg" : "#talkMsg", text, true); }
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-mic]"); if (!b) return; e.preventDefault();
+  const target = b.dataset.mic, ta = document.getElementById(target);
+  if (!dict || dictOff) {   // phone apps and some browsers: no page microphone, so hand over to the keyboard's
+    micTarget = target; ta.focus();
+    return micMsg("On this device, tap the microphone on your keyboard to speak. On a computer, open this page in Chrome, Edge or the Claude desktop app to use this button.");
+  }
+  if (dict.active() && micTarget === target) { dict.stop().catch(() => {}); return; }
+  if (dict.active()) dict.stop().catch(() => {});
+  micTarget = target;
+  dict.start().catch(err => {   // started straight from the click, nothing awaited first
+    if (err?.code === "not_granted" || err?.code === "unavailable") { dictOff = true; micMsg("Speaking isn't available here. Use the microphone on your keyboard instead."); ta.focus(); }
+    else if (err?.code === "dismissed") micMsg("Press the microphone again and allow it to start speaking.");
+    else if (err?.code !== "stopped") micMsg("The microphone didn't start. Press it to try again.");
+  });
 });
 
 /* ---------- boot ---------- */
