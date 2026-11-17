@@ -313,6 +313,39 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 .tagedit .tag button:hover{background:rgba(0,0,0,.12)}
 .tagedit input{border:none!important;padding:3px 4px!important;flex:1;min-width:120px;background:transparent!important;outline:none}
 
+/* linked steps */
+.r-titlewrap{display:flex;gap:6px;align-items:flex-start;min-width:0}
+.caret{all:unset;cursor:pointer;width:20px;height:22px;display:grid;place-items:center;color:var(--muted);border-radius:5px;flex:none;font-size:.85rem}
+.caret:hover{background:var(--raised);color:var(--ink)}
+.caret:focus-visible{outline:2px solid var(--accent)}
+.stepno{flex:none;min-width:20px;height:20px;border-radius:6px;background:var(--raised);color:var(--muted);font-family:var(--f-mono);font-size:.72rem;display:grid;place-items:center;margin-top:1px}
+.scount{font-family:var(--f-mono);font-size:.7rem;font-weight:500;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:0 7px;white-space:nowrap}
+.group{border-top:1px solid var(--line)}
+.group > .item{border-top:none}
+.steps{margin:0 0 6px 34px;border-left:2px solid var(--line);padding-left:6px}
+.steps .item{border-top:1px dashed var(--line)}
+.steps .item:first-child{border-top:none}
+.steps .row{padding-block:6px}
+.steps .t-title{font-weight:500;font-size:.92rem}
+.item.is-step.closed .stepno{background:var(--ok-soft);color:var(--ok)}
+.partof b{color:var(--ink);font-weight:600}
+.linkbox{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.88rem}
+.linklike{all:unset;cursor:pointer;font-weight:600;color:var(--accent)}
+.linklike:hover{text-decoration:underline}
+.linklike:focus-visible{outline:2px solid var(--accent)}
+.stepbox{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stepbox ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.stepbox li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.9rem}
+.stepbox li .linklike{flex:1;min-width:120px;color:var(--ink)}
+.stepbox li.closed .linklike{text-decoration:line-through;color:var(--muted)}
+.stepbox .mv{display:inline-flex;gap:2px}
+.stepbox .mv button{padding:1px 7px;font-size:.8rem;border-radius:6px}
+.stepform{display:flex;gap:6px}
+.stepform input{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--raised)}
+.linkin{display:flex;flex-direction:column;gap:3px;font-size:.76rem;color:var(--muted);font-weight:600}
+.linkin input{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--raised);font-weight:400}
+@media (max-width:860px){.steps{margin-left:14px}}
+
 /* detail drawer */
 .detail{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:6px 6px 18px 36px}
 .updates{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -340,7 +373,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 @media (max-width:860px){
   .row.head{display:none}
   .row{grid-template-columns:24px minmax(0,1fr) minmax(0,1fr);grid-template-areas:"c t t" ". s p" ". d w";row-gap:8px;padding:12px 4px}
-  .row > .check{grid-area:c;align-self:start;margin-top:2px} .r-title{grid-area:t} .r-status{grid-area:s} .r-prog{grid-area:p} .r-due{grid-area:d} .r-who{grid-area:w}
+  .row > .check{grid-area:c;align-self:start;margin-top:2px} .r-titlewrap{grid-area:t} .r-status{grid-area:s} .r-prog{grid-area:p} .r-due{grid-area:d} .r-who{grid-area:w}
   .detail{grid-template-columns:minmax(0,1fr);padding:4px 4px 16px}
 }
 @media (max-width:420px){.edit{grid-template-columns:minmax(0,1fr)}}
@@ -527,6 +560,36 @@ document.addEventListener("keydown", e => { const el = e.target.closest?.("[data
   else if (e.key === "Backspace" && !el.value) { const t = state.tasks.find(x => x.id === el.dataset.tagin); if (t && tagsOf(t).length) { state.focusTag = t.id; patch(t.id, { tags: tagsOf(t).slice(0, -1) }); } } });
 document.addEventListener("change", e => { const el = e.target.closest?.("[data-tagin]"); if (el && el.value.trim()) addTagFromInput(el); });
 
+document.addEventListener("click", async e => {
+  const c = e.target.closest("[data-collapse]");
+  if (c) { const id = c.dataset.collapse; state.collapsed.has(id) ? state.collapsed.delete(id) : state.collapsed.add(id);
+    try { localStorage.setItem("wd-collapsed", JSON.stringify([...state.collapsed])); } catch {} return render(); }
+  const un = e.target.closest("[data-unlink]");
+  if (un) { const t = byId(un.dataset.unlink); if (!t) return; const pid = t.parentId;
+    await patch(t.id, { parentId: "", order: 0 }); await syncParent(pid, { id: t.id, parentId: "" }); return; }
+  const mv = e.target.closest("[data-move]");
+  if (mv) { const t = byId(mv.dataset.id); if (!t?.parentId) return; const steps = stepsOf(t.parentId), i = steps.indexOf(t), j = i + Number(mv.dataset.move);
+    if (j < 0 || j >= steps.length) return; [steps[i], steps[j]] = [steps[j], steps[i]];
+    for (let k = 0; k < steps.length; k++) if (steps[k].order !== k + 1) await patch(steps[k].id, { order: k + 1 }); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target.closest("form.stepform"); if (!f) return; e.preventDefault();
+  const v = f.elements.title.value.trim(); if (!v) return;
+  f.elements.title.value = ""; state.focusStep = f.dataset.parent;
+  const r = await addStep(f.dataset.parent, v);
+  if (r.dup) flash("#boardMsg", r.linked ? `"${v}" was already on the board, so it's now linked as a step.` : `"${v}" is already on the board.`);
+});
+document.addEventListener("change", async e => {
+  const el = e.target.closest?.("[data-linkin]"); if (!el || !el.value.trim()) return;
+  const t = byId(el.dataset.linkin), target = state.tasks.find(x => isOpen(x) && !x.parentId && x.id !== t?.id && norm(x.title) === norm(el.value));
+  if (!t) return; if (!target) return flash("#boardMsg", "Pick a task from the list to link to.", true);
+  if (t.parentId === target.id) return;
+  await patch(t.id, { parentId: target.id, order: nextOrder(target.id) });
+  if (target.status === "done") await patch(target.id, statusPatch(target, "doing"));
+  await syncParent(target.id, { id: t.id, parentId: target.id });
+  flash("#boardMsg", `Linked as a step of "${target.title}".`);
+});
+
 /* ---------- search ---------- */
 state.q = "";
 const searchText = t => norm([t.title, ...tagsOf(t), t.notes, t.nextStep, t.waitingOn, STATUS[t.status]?.label, ...(t.updates||[]).map(u => u.text)].join(" "));
@@ -568,6 +631,40 @@ try { state.tab = localStorage.getItem("wd-tab") || "today"; } catch { state.tab
 const fmtHours = m => { if (!m) return "0 min"; const h = Math.floor(m/60), r = m%60; return h ? `${h} h${r?` ${r} min`:""}` : `${r} min`; };
 const prio = t => ({high:3,med:2,low:1}[t.priority]||2);
 const lastUpdate = t => (t.updates && t.updates.length) ? t.updates[t.updates.length-1] : null;
+
+/* ---------- linked tasks: a main task with numbered steps ---------- */
+const byId = id => state.tasks.find(t => t.id === id);
+const parentOf = t => (t && t.parentId) ? byId(t.parentId) : null;
+const stepsOf = id => state.tasks.filter(t => t.parentId === id && t.id !== id)
+  .sort((a,b) => (a.order || 1e9) - (b.order || 1e9) || (a.createdAt||"").localeCompare(b.createdAt||""));
+const nextOrder = pid => Math.max(0, ...stepsOf(pid).map(s => s.order || 0)) + 1;
+try { state.collapsed = new Set(JSON.parse(localStorage.getItem("wd-collapsed") || "[]")); } catch { state.collapsed = new Set(); }
+// keep the main task's progress (and done state) in step with its steps
+async function syncParent(parentId, changed){
+  const p = byId(parentId); if (!p) return;
+  const steps = stepsOf(parentId).map(s => changed && s.id === changed.id ? { ...s, ...changed } : s);
+  if (!steps.length) return;
+  const doneN = steps.filter(s => s.status === "done").length, allClosed = steps.every(s => !isOpen(s));
+  const prog = Math.round(doneN / steps.length * 10) * 10;
+  if (allClosed && doneN && isOpen(p)) { await patch(p.id, statusPatch(p, "done")); flash("#boardMsg", `All steps done, so "${p.title}" is done too.`); }
+  else if (!allClosed && p.status === "done") await patch(p.id, { ...statusPatch(p, "doing"), progress: prog });
+  else if (isOpen(p) && (p.progress||0) !== prog) { const pp = { progress: prog }; if (p.status === "todo" && doneN) pp.status = "doing"; await patch(p.id, pp); }
+}
+async function setStatus(t, s){ await patch(t.id, statusPatch(t, s)); if (t.parentId) await syncParent(t.parentId, { id: t.id, status: s }); }
+async function addStep(parentId, title, extra = {}){
+  const p = byId(parentId); if (!p) return { dup: true };
+  const r = await addTask({ ...extra, title, tags: extra.tags?.length ? extra.tags : tagsOf(p), parentId, order: nextOrder(parentId) });
+  if (p.status === "done") await patch(p.id, statusPatch(p, "doing"));
+  await syncParent(parentId);
+  return r;
+}
+
+function groupHTML(top){
+  const steps = top.parentId ? [] : stepsOf(top.id);
+  if (!steps.length) return rowHTML(top);
+  const shut = state.collapsed.has(top.id);
+  return `<div class="group">${rowHTML(top, { steps })}${shut ? "" : `<div class="steps">${steps.map((s, i) => rowHTML(s, { step: i + 1 })).join("")}</div>`}</div>`;
+}
 
 function render(){
   const open = state.tasks.filter(isOpen);
@@ -623,6 +720,15 @@ function render(){
   list = q ? list.sort((a,b) => (isOpen(b) - isOpen(a)) || (a.due||"9999").localeCompare(b.due||"9999"))
     : state.tab === "closed" ? list.sort((a,b)=>(b.closedAt||"").localeCompare(a.closedAt||""))
     : list.sort((a,b) => (a.due||"9999").localeCompare(b.due||"9999") || prio(b)-prio(a));
+  let rowsHTML;
+  if (q || state.tab === "closed") rowsHTML = list.map(t => rowHTML(t, { flat: true })).join("");
+  else {   // a step that matches brings its whole piece of work, in order
+    const tops = [], seen = new Set(), todayStr = iso(new Date());
+    // in Today, a piece of work stays on screen for the rest of the day after you tick one of its steps
+    if (state.tab === "today") list = list.concat(state.tasks.filter(t => t.parentId && !isOpen(t) && t.closedAt && iso(new Date(t.closedAt)) === todayStr && byTag(t)));
+    for (const t of list) { const top = parentOf(t) || t; if (!seen.has(top.id)) { seen.add(top.id); tops.push(top); } }
+    rowsHTML = tops.map(groupHTML).join("");
+  }
   const emptyCopy = { today: "Nothing due today or overdue.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
     waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet." }[state.tab];
   const keep = {}, focusId = document.activeElement?.id, openDetail = document.querySelector("#board .detail");
@@ -632,7 +738,7 @@ function render(){
     : state.tasks.length === 0 ? `<div class="empty-state"><b>Your board is empty</b>Talk to the check-in, or type, speak or upload your work in "What's on your plate?" below.</div>`
     : `<div class="row head" aria-hidden="true"><span></span><span>Task</span><span>Status</span><span>Progress</span><span>Due</span><span>Waiting on</span></div>` +
       (q ? `<div class="search-note">${list.length} result${list.length===1?"":"s"} for “${esc(state.q)}” across all tasks<button class="link" data-clear-search>Clear search</button></div>` : "") +
-      (list.length ? list.map(rowHTML).join("") : `<div class="empty-state">${q ? "Nothing matches. Try another word, or a person's name." : emptyCopy}</div>`);
+      (list.length ? rowsHTML : `<div class="empty-state">${q ? "Nothing matches. Try another word, or a person's name." : emptyCopy}</div>`);
 
   for (const [k,v] of Object.entries(keep)) { const el = document.getElementById(k); if (el) el.value = v; }
   if (focusId && !state.focusUpdate) document.getElementById(focusId)?.focus();
@@ -641,23 +747,32 @@ function render(){
   const noAI = !state.sample;
   $("#sortBtn").disabled = noAI || !state.canWrite; $("#planBtn").disabled = noAI || !state.canWrite;
   $("#addBtn").disabled = !state.canWrite; $("#uploadBtn").disabled = noAI || !state.canWrite;
+  if (state.focusStep) { document.getElementById("step-" + state.focusStep)?.focus(); state.focusStep = null; }
   if (state.focusTag) { document.getElementById("tagin-" + state.focusTag)?.focus(); state.focusTag = null; }
   if (state.focusUpdate) { const el = document.getElementById("u-" + state.focusUpdate); if (el) el.focus(); state.focusUpdate = null; }
 }
 
-function rowHTML(t){
-  const open = isOpen(t), n = daysFrom(t.due), st = STATUS[t.status] || STATUS.todo, lu = lastUpdate(t), pct = t.status === "done" ? 100 : (t.progress||0);
+function rowHTML(t, o = {}){
+  const open = isOpen(t), n = daysFrom(t.due), st = STATUS[t.status] || STATUS.todo, lu = lastUpdate(t);
+  const steps = o.steps || [], sDone = steps.filter(x => x.status === "done").length;
+  const pct = t.status === "done" ? 100 : steps.length ? Math.round(sDone / steps.length * 100) : (t.progress||0);
+  const par = o.flat ? parentOf(t) : null, shut = state.collapsed.has(t.id);
   const ro = state.canWrite ? "" : "disabled";
   const dueCls = !open || n === null ? "" : n < 0 ? "hot" : n === 0 ? "sun" : "";
-  return `<div class="item ${state.openEdit===t.id?"open":""} ${open?"":"closed"}">
+  return `<div class="item ${state.openEdit===t.id?"open":""} ${open?"":"closed"} ${o.step?"is-step":""} ${steps.length?"is-parent":""}">
     <div class="row">
       <input type="checkbox" class="check" aria-label="Mark done: ${esc(t.title)}" data-act="toggle" data-id="${t.id}" ${t.status==="done"?"checked":""} ${ro}>
+      <div class="r-titlewrap">
+      ${steps.length ? `<button class="caret" data-collapse="${t.id}" aria-expanded="${!shut}" aria-label="${shut ? "Show" : "Hide"} steps">${shut ? "▸" : "▾"}</button>` : o.step ? `<span class="stepno" aria-label="Step ${o.step}">${o.step}</span>` : ""}
       <button class="r-title" data-act="open" data-id="${t.id}" aria-expanded="${state.openEdit===t.id}">
         <span class="t-title"><span class="pri ${open?t.priority:"low"}" aria-hidden="true"></span><span>${hl(t.title)}</span>
+          ${steps.length ? `<span class="scount">${sDone}/${steps.length} steps</span>` : ""}
           ${t.updates?.length ? `<span class="ucount" title="Updates">${t.updates.length}</span>` : ""}</span>
         ${tagsOf(t).length ? `<span class="tagrow">${tagsOf(t).map(tagChip).join("")}</span>` : ""}
+        ${par ? `<span class="r-sub partof">Step of: <b>${esc(par.title)}</b></span>` : ""}
         ${lu ? `<span class="r-sub">${hl(lu.text)} <i>· ${ago(lu.at)}</i></span>` : t.nextStep && open ? `<span class="r-sub">Next: ${esc(t.nextStep)}</span>` : ""}
       </button>
+      </div>
       <label class="r-status"><span class="vh">Status</span>
         <select class="pill ${st.cls}" data-act="status" data-id="${t.id}" ${ro}>${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${k===t.status?"selected":""}>${v.label}</option>`).join("")}</select></label>
       <div class="r-prog" title="${pct}% done"><span class="pbar"><span style="width:${pct}%"></span></span><span class="mono">${pct}%</span></div>
@@ -668,10 +783,32 @@ function rowHTML(t){
   </div>`;
 }
 
+function linkBoxHTML(t){
+  const par = parentOf(t);
+  if (par) { const i = stepsOf(par.id).findIndex(s => s.id === t.id) + 1;
+    return `<div class="linkbox"><span>Step ${i} of <button class="linklike" data-open-task="${par.id}">${esc(par.title)}</button></span>${state.canWrite ? `<button type="button" class="link" data-unlink="${t.id}">Unlink</button>` : ""}</div>`; }
+  const steps = stepsOf(t.id), done = steps.filter(s => s.status === "done").length;
+  const candidates = state.tasks.filter(x => isOpen(x) && !x.parentId && x.id !== t.id);
+  return `<div class="stepbox">
+    <h3 class="label">Steps${steps.length ? ` · ${done} of ${steps.length} done` : ""}</h3>
+    ${steps.length ? `<ol>${steps.map((s, i) => `<li class="${isOpen(s) ? "" : "closed"}">
+        <input type="checkbox" class="check" aria-label="Mark done: ${esc(s.title)}" data-act="toggle" data-id="${s.id}" ${s.status==="done"?"checked":""} ${state.canWrite?"":"disabled"}>
+        <span class="stepno">${i + 1}</span>
+        <button class="linklike" data-open-task="${s.id}">${esc(s.title)}</button>
+        <span class="chip">${s.status === "done" ? "Done " + fmtD(s.closedAt) : (STATUS[s.status]?.label || "") + (s.due ? " · " + fmtDue(s.due).replace(/^Due /, "") : "")}</span>
+        ${state.canWrite ? `<span class="mv"><button type="button" data-move="-1" data-id="${s.id}" aria-label="Move up" ${i===0?"disabled":""}>↑</button><button type="button" data-move="1" data-id="${s.id}" aria-label="Move down" ${i===steps.length-1?"disabled":""}>↓</button></span>` : ""}
+      </li>`).join("")}</ol>` : `<p class="dim">Break this into steps. They stay listed here in order, and ticked ones stay visible.</p>`}
+    ${state.canWrite ? `<form class="stepform" data-parent="${t.id}"><input id="step-${t.id}" name="title" placeholder="Add a step…" autocomplete="off" aria-label="New step"><button type="submit">Add step</button></form>
+      ${!steps.length && candidates.length ? `<div class="linkin"><label for="linkin-${t.id}">Or make this a step of another task</label>
+        <input id="linkin-${t.id}" list="parentlist-${t.id}" data-linkin="${t.id}" placeholder="Start typing a task name…" autocomplete="off">
+        <datalist id="parentlist-${t.id}">${candidates.map(x => `<option value="${esc(x.title)}">`).join("")}</datalist></div>` : ""}` : ""}
+  </div>`;
+}
 function detailHTML(t){
   const ups = (t.updates||[]).slice().reverse(), busy = state.busy.has(t.id), open = isOpen(t), pct = t.status === "done" ? 100 : (t.progress||0);
   return `<div class="detail" data-id="${t.id}">
     <section class="updates" aria-label="Updates">
+      ${linkBoxHTML(t)}
       <h3 class="label">Updates</h3>
       ${state.canWrite ? `<form class="upform" data-id="${t.id}">
         <textarea id="u-${t.id}" name="text" rows="2" placeholder="Write an update: needs action from…, waiting for…, done the first draft…" aria-label="Write an update"></textarea>
@@ -712,14 +849,17 @@ const col = () => state.db.collection("tasks");
 function newTask(p){
   return { title: String(p.title||"").slice(0,300), notes: String(p.notes||""), priority: ["high","med","low"].includes(p.priority)?p.priority:"med",
     due: /^\d{4}-\d{2}-\d{2}$/.test(p.due||"") ? p.due : "", estimate: Number(p.estimate)||0, nextStep: String(p.nextStep||""),
-    status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), tags: mergeTags(Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : [])), updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
+    status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), tags: mergeTags(Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : [])), parentId: String(p.parentId || ""), order: Number(p.order) || 0, updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
 }
 const norm = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const findDup = title => state.tasks.find(t => isOpen(t) && norm(t.title) === norm(title));
 // add a task unless an open task with the same title is already on the board; returns {id, dup}
 async function addTask(p){
   const dup = findDup(p.title);
-  if (dup) return { id: dup.id, dup: true };
+  if (dup) {   // already on the board: if it belongs under a main task, link it there
+    if (p.parentId && !dup.parentId && dup.id !== p.parentId && !stepsOf(dup.id).length) { await patch(dup.id, { parentId: p.parentId, order: p.order || nextOrder(p.parentId) }); return { id: dup.id, dup: true, linked: true }; }
+    return { id: dup.id, dup: true };
+  }
   const ref = await col().add(newTask(p));
   state.tasks.push({ id: ref.id, ...newTask(p) });   // so a second copy in the same batch is caught too
   return { id: ref.id, dup: false };
@@ -743,14 +883,25 @@ $("#addBtn").onclick = async () => {
 
 const taskFormat = () => `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "tags": 1-2 project names, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
 Use the person's own words for things (for example "Uniforms", never "Team Wear"). Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.
-Projects already in use: ${allTags().join(", ") || "(none yet)"}. Reuse one of these whenever it fits; only make up a new short project name when the work clearly belongs to a different project.`;
+Projects already in use: ${allTags().join(", ") || "(none yet)"}. Reuse one of these whenever it fits; only make up a new short project name when the work clearly belongs to a different project.
+KEEP LINKED WORK TOGETHER. When several actions belong to ONE piece of work (same topic or same people, or one has to happen before another), return ONE item for the piece of work, named for the overall outcome, with "steps": [{"title", "due", "estimate", "nextStep"}] listed in the order they happen. Do not return those actions as separate items. Only things that really are unrelated become separate items.
+If an item is a further step of an EXISTING open task in the list below, add "partOf": that task's exact title instead.
+Existing open main tasks:
+${state.tasks.filter(t => isOpen(t) && !t.parentId).map(t => "- " + t.title).slice(0, 80).join("\n") || "(none)"}`;
 
 async function extractTasks(prompt, opts = {}, source = ""){
   const items = await state.sample.json(prompt, { modelTier: "default", ...opts });
   if (!Array.isArray(items)) throw { code: "empty" };
-  let added = 0;
-  for (const it of items) { if (source) it.notes = [it.notes, `From: ${source}`].filter(Boolean).join("\n"); if (!(await addTask(it)).dup) added++; }
-  state.lastSkipped = items.length - added;
+  let added = 0, skipped = 0;
+  for (const it of items) {
+    if (source) it.notes = [it.notes, `From: ${source}`].filter(Boolean).join("\n");
+    const host = it.partOf && state.tasks.find(t => isOpen(t) && !t.parentId && norm(t.title) === norm(it.partOf));
+    if (host) { (await addStep(host.id, it.title, it)).dup ? skipped++ : added++; continue; }
+    const { steps, partOf, ...main } = it;
+    const r = await addTask(main); r.dup ? skipped++ : added++;
+    if (Array.isArray(steps)) for (const st of steps) if (st && st.title) (await addStep(r.id, String(st.title), { ...st, tags: main.tags })).dup ? skipped++ : added++;
+  }
+  state.lastSkipped = skipped;
   return added;
 }
 const sampleErr = e => e.code==="not_granted" ? "Claude wasn't allowed to help. Allow it from the page's permissions and try again."
@@ -906,8 +1057,8 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b || b.tagName === "SELECT" || b.type === "range") return;
   const id = b.dataset.id, t = state.tasks.find(x => x.id === id), act = b.dataset.act;
   if (!t) return;
-  if (act === "toggle") return patch(id, statusPatch(t, t.status === "done" ? "todo" : "done"));
-  if (act === "drop") { state.openEdit = null; return patch(id, statusPatch(t, "dropped")); }
+  if (act === "toggle") return setStatus(t, t.status === "done" ? "todo" : "done");
+  if (act === "drop") { state.openEdit = null; return setStatus(t, "dropped"); }
   if (act === "delete") { state.openEdit = null; return col().doc(id).delete(); }
   if (act === "prep") return prep(t);
   if (act === "open") { state.openEdit = state.openEdit === id ? null : id; return render(); }
@@ -916,10 +1067,10 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => {
   const el = e.target, id = el.dataset?.id, t = state.tasks.find(x => x.id === id);
   if (!t) return;
-  if (el.dataset.act === "status") return patch(id, statusPatch(t, el.value));
+  if (el.dataset.act === "status") return setStatus(t, el.value);
   if (el.dataset.act === "progress") {
     const v = Number(el.value), p = { progress: v };
-    if (v === 100 && isOpen(t)) Object.assign(p, statusPatch(t, "done"));
+    if (v === 100 && isOpen(t)) return setStatus(t, "done");
     else if (v > 0 && t.status === "todo") p.status = "doing";
     return patch(id, p);
   }
@@ -961,25 +1112,28 @@ function renderTalk(pending){
   $("#sendBtn").disabled = state.talking || !state.sample || !state.canWrite;
 }
 
-const taskLine = t => `[${t.id}] ${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | ${STATUS[t.status]?.label || t.status} | ${t.progress||0}% done${t.waitingOn ? " | waiting on/owner: " + t.waitingOn : ""}${lastUpdate(t) ? " | latest update: " + lastUpdate(t).text.slice(0,140) : ""} | priority ${t.priority} | ${t.due ? "due " + t.due : "no date"} | ${t.estimate ? t.estimate + " min" : "no estimate"}${t.nextStep ? " | next: " + t.nextStep : ""}`;
+const taskLine = t => `[${t.id}] ${t.parentId && byId(t.parentId) ? "  (step of " + t.parentId + ") " : ""}${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | ${STATUS[t.status]?.label || t.status} | ${t.progress||0}% done${t.waitingOn ? " | waiting on/owner: " + t.waitingOn : ""}${lastUpdate(t) ? " | latest update: " + lastUpdate(t).text.slice(0,140) : ""} | priority ${t.priority} | ${t.due ? "due " + t.due : "no date"} | ${t.estimate ? t.estimate + " min" : "no estimate"}${t.nextStep ? " | next: " + t.nextStep : ""}`;
 function chatTools(actions){
   const find = id => { const t = state.tasks.find(x => x.id === String(id)); if (!t) throw new Error("No task with id " + id); return t; };
   return [
     { name: "add_task", description: "Add a new task to the person's list. Returns the new task id. Check the task list first: never add something that is already there.",
-      inputSchema: { type:"object", properties: { title:{type:"string"}, tags:{type:"array",items:{type:"string"},description:"project names; reuse existing ones"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["title"] },
-      async execute(i){ const r = await addTask(i);
+      inputSchema: { type:"object", properties: { title:{type:"string"}, tags:{type:"array",items:{type:"string"},description:"project names; reuse existing ones"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"}, parentId:{type:"string",description:"id of the main task when this is one step of it"} }, required:["title"] },
+      async execute(i){ const r = i.parentId && byId(String(i.parentId)) ? await addStep(String(i.parentId), String(i.title), i) : await addTask(i);
         if (r.dup) return { id: r.id, note: "Already on the board with this id; not added again. Use update_task if something changed." };
         actions.push("Added: " + String(i.title)); renderTalk(state.pendingTalk); return { id: r.id }; } },
     { name: "update_task", description: "Change an existing task by id: mark it done, in progress (doing), back to todo, or dropped (not needed); or change its title, due date, priority, estimate, next step or notes.",
-      inputSchema: { type:"object", properties: { id:{type:"string"}, status:{type:"string",enum:["todo","doing","waiting","stuck","review","done","dropped"],description:"todo=Not started, doing=Working on it, waiting=Waiting on someone, stuck, review=Ready for review, done, dropped=Not needed"}, progress:{type:"number",description:"0-100 percent done"}, waitingOn:{type:"string",description:"person it is waiting on or who owns the next action"}, tags:{type:"array",items:{type:"string"},description:"the full new list of project names"}, title:{type:"string"}, due:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, estimate:{type:"number"}, nextStep:{type:"string"}, notes:{type:"string"} }, required:["id"] },
+      inputSchema: { type:"object", properties: { id:{type:"string"}, status:{type:"string",enum:["todo","doing","waiting","stuck","review","done","dropped"],description:"todo=Not started, doing=Working on it, waiting=Waiting on someone, stuck, review=Ready for review, done, dropped=Not needed"}, progress:{type:"number",description:"0-100 percent done"}, waitingOn:{type:"string",description:"person it is waiting on or who owns the next action"}, tags:{type:"array",items:{type:"string"},description:"the full new list of project names"}, title:{type:"string"}, due:{type:"string"}, priority:{type:"string",enum:["high","med","low"]}, estimate:{type:"number"}, nextStep:{type:"string"}, notes:{type:"string"}, parentId:{type:"string",description:"id of the main task to link this under as a step, or empty to unlink"} }, required:["id"] },
       async execute(i){
         const t = find(i.id), p = {};
+        if (i.parentId !== undefined) { const pid = String(i.parentId); if (pid && pid !== t.id && byId(pid)) { p.parentId = pid; p.order = nextOrder(pid); } else if (!pid) { p.parentId = ""; p.order = 0; } }
         for (const k of ["title","due","priority","nextStep","notes","waitingOn"]) if (i[k] !== undefined) p[k] = String(i[k]);
         if (i.estimate !== undefined) p.estimate = Number(i.estimate) || 0;
         if (Array.isArray(i.tags)) p.tags = mergeTags(i.tags);
         if (i.status && STATUS[i.status]) Object.assign(p, statusPatch(t, i.status));
         if (i.progress !== undefined) p.progress = Math.max(0, Math.min(100, Math.round(Number(i.progress) / 10) * 10 || 0));
         await col().doc(t.id).update(p);
+        const pid = p.parentId !== undefined ? (p.parentId || t.parentId) : t.parentId;
+        if (pid) await syncParent(pid, { id: t.id, ...p });
         actions.push((i.status && STATUS[i.status] ? STATUS[i.status].label + ": " : "Updated: ") + t.title);
         renderTalk(state.pendingTalk); return "ok"; } },
     { name: "add_update", description: "Post a short status update to one task's update log (like a comment on a board item), e.g. 'Needs sign-off from Sam' or 'First draft done'. If it says who it's waiting on, the task is marked as waiting on them.",
@@ -1003,6 +1157,7 @@ async function talk(text){
 Use their own words for things (for example "Uniforms", never "Team Wear").
 Earlier messages in this conversation describe the board as it was then. Tasks may have been finished or changed since, so always go by the task list below, and don't apologise for or correct earlier answers just because things have moved on.
 Your jobs:
+- Keep linked work together. When they describe one piece of work with several actions, add ONE main task and then each action as a step (add_task with parentId) in the order they happen. When new work is a further step of an existing task, add it with that task's id as parentId. To group tasks that are already on the board, use update_task with parentId.
 - Keep their task list accurate. When they mention new work, add it with add_task (resolve days like "Thursday" to real dates, estimate minutes). When they say something is finished, started, waiting on someone, stuck, ready for review, partly done or moved, use update_task with the task id (set status, progress and waitingOn). When they give context about a task (who it needs action from, what happened), also post it with add_update. Never invent tasks they didn't mention.
 - Help them see where they are and what to do next. Be specific: name the task and the next action. If they're overloaded, say what can wait.
 - Offer to prep things (draft an email, outline, checklist) when it would help them get ahead, and write it in the reply if they ask.
@@ -1058,7 +1213,8 @@ function weekFacts(w){
 }
 const fmtD = s => { const d = typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) ? parseDay(s) : new Date(s); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); };
 const preciseLine = t => {
-  const parts = [`- [${tagsOf(t).join(", ") || "No project"}] ${t.title}`, STATUS[t.status]?.label || t.status];
+  const par = parentOf(t);
+  const parts = [`- [${tagsOf(t).join(", ") || "No project"}] ${t.title}${par ? ` (step of: ${par.title})` : stepsOf(t.id).length ? ` (${stepsOf(t.id).filter(x => x.status === "done").length} of ${stepsOf(t.id).length} steps done)` : ""}`, STATUS[t.status]?.label || t.status];
   if (t.status === "done" || t.status === "dropped") parts.push((t.status === "done" ? "completed " : "dropped ") + fmtD(t.closedAt));
   else parts.push(`${t.progress||0}% done`);
   if (t.due) { const n = daysFrom(t.due); parts.push(`due ${fmtD(t.due)}${isOpen(t) && n < 0 ? ` (${-n} day${n===-1?"":"s"} overdue)` : ""}`); }
@@ -1092,6 +1248,7 @@ Precision rules:
 - Never write "several", "some", "a number of", "various", "a few" or "many". Give the exact count or list the items.
 - Give exact dates in the form "Mon 16 Nov", exact percentages and the names of people.
 - One task per line. No filler sentences.
+- Steps are shown as "(step of: Main task)". List a completed step under Completed with its main task, e.g. "- [FWCC27] Speak to Karthic (step of: Catering Rosterfy setup): completed Tue 17 Nov".
 
 Sections, each heading on its own line followed by its count in brackets, in this order:
 Summary: exactly 2 sentences. Sentence 1 gives the counts: ${f.done.length} completed, ${f.dropped.length} dropped, ${f.open.length} still open, ${f.overdue.length} overdue. Sentence 2 names the single biggest risk and its due date.
@@ -1196,7 +1353,10 @@ function renderPlan(){
   }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-open-task]"); if (!b) return;
-  state.q = ""; $("#q").value = ""; state.tab = "all"; state.tag = ""; state.openEdit = b.dataset.openTask; showView("tasks", true); render();
+  const tt = byId(b.dataset.openTask), host = tt && (parentOf(tt) || tt);
+  state.q = ""; $("#q").value = ""; state.tab = host && isOpen(host) ? "all" : "closed"; state.tag = ""; state.openEdit = b.dataset.openTask;
+  if (host) state.collapsed.delete(host.id);
+  showView("tasks", true); render();
   document.querySelector(`.detail[data-id="${b.dataset.openTask}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); });
 
 /* ---------- microphone (dictation) ---------- */
