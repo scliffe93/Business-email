@@ -280,6 +280,8 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 .who{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .av{width:22px;height:22px;flex:none;border-radius:50%;background:var(--st-wait);color:#fff;font-size:.7rem;display:grid;place-items:center}
 .dim{color:var(--muted);font-size:.84rem}
+.duein input{border:1px dashed var(--line);border-radius:999px;padding:2px 8px;font-size:.75rem;background:var(--surface);color:var(--muted);max-width:132px;cursor:pointer}
+.duein input:hover,.duein input:focus{border-color:var(--accent);color:var(--ink)}
 .check{appearance:none;-webkit-appearance:none;width:22px;height:22px;margin:0;border:2px solid var(--line);border-radius:50%;cursor:pointer;display:grid;place-items:center;transition:background .15s,border-color .15s;background:var(--surface)}
 .check:hover{border-color:var(--accent)}
 .check:checked{background:var(--ok);border-color:var(--ok)}
@@ -590,6 +592,12 @@ document.addEventListener("change", async e => {
   flash("#boardMsg", `Linked as a step of "${target.title}".`);
 });
 
+document.addEventListener("change", e => {
+  const el = e.target.closest?.("[data-setdue]"); if (!el || !/^(20[2-9]\d)-\d{2}-\d{2}$/.test(el.value)) return;   // ignore half-typed years
+  const t = byId(el.dataset.setdue); if (!t) return;
+  patch(t.id, { due: el.value }).then(() => flash("#boardMsg", `"${t.title}" is now ${fmtDue(el.value).replace(/^Due /, "due ")}.`));
+});
+
 /* ---------- search ---------- */
 state.q = "";
 const searchText = t => norm([t.title, ...tagsOf(t), t.notes, t.nextStep, t.waitingOn, STATUS[t.status]?.label, ...(t.updates||[]).map(u => u.text)].join(" "));
@@ -624,6 +632,7 @@ const TABS = [
   ["week",    "This week",   t => isOpen(t) && t.due && daysFrom(t.due) <= 7],
   ["doing",   "In progress", t => t.status === "doing" || t.status === "review"],
   ["waiting", "Waiting / stuck", t => t.status === "waiting" || t.status === "stuck"],
+  ["nodate",  "No date",     t => isOpen(t) && !t.due],
   ["all",     "All open",    isOpen],
   ["closed",  "Done",        t => !isOpen(t)],
 ];
@@ -730,7 +739,8 @@ function render(){
     rowsHTML = tops.map(groupHTML).join("");
   }
   const emptyCopy = { today: "Nothing due today or overdue.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
-    waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet." }[state.tab];
+    waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet.",
+    nodate: "Every open task has a date." }[state.tab];
   const keep = {}, focusId = document.activeElement?.id, openDetail = document.querySelector("#board .detail");
   if (openDetail && openDetail.dataset.id === state.openEdit)   // same task still open: keep what's being typed
     openDetail.querySelectorAll("[id]").forEach(el => { if ("value" in el && el.type !== "range") keep[el.id] = el.value; });
@@ -776,7 +786,9 @@ function rowHTML(t, o = {}){
       <label class="r-status"><span class="vh">Status</span>
         <select class="pill ${st.cls}" data-act="status" data-id="${t.id}" ${ro}>${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${k===t.status?"selected":""}>${v.label}</option>`).join("")}</select></label>
       <div class="r-prog" title="${pct}% done"><span class="pbar"><span style="width:${pct}%"></span></span><span class="mono">${pct}%</span></div>
-      <div class="r-due">${t.due ? `<span class="chip ${dueCls}">${fmtDue(t.due).replace(/^Due /,"")}</span>` : `<span class="dim">No date</span>`}</div>
+      <div class="r-due">${t.due ? `<span class="chip ${dueCls}">${fmtDue(t.due).replace(/^Due /,"")}</span>`
+        : open && state.canWrite ? `<label class="duein"><span class="vh">Set a due date for ${esc(t.title)}</span><input type="date" id="due-${t.id}" data-setdue="${t.id}" min="${iso(new Date())}"></label>`
+        : `<span class="dim">No date</span>`}</div>
       <div class="r-who">${t.waitingOn ? `<span class="who"><span class="av" aria-hidden="true">${esc(t.waitingOn.trim()[0]||"?").toUpperCase()}</span>${hl(t.waitingOn)}</span>` : `<span class="dim">–</span>`}</div>
     </div>
     ${state.openEdit === t.id ? detailHTML(t) : ""}
