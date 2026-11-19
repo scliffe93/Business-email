@@ -191,6 +191,39 @@ button.small{padding:5px 11px;font-size:.82rem}
 .rep-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .rep-table-wrap{overflow-x:auto}
 
+/* review pop-up */
+#review{border:none;border-radius:18px;padding:0;width:min(760px,calc(100% - 24px));max-height:88vh;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.25);display:none;flex-direction:column}
+#review[open]{display:flex}
+#review::backdrop{background:rgba(15,18,30,.45)}
+.rv-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:18px 18px 10px;border-bottom:1px solid var(--line)}
+.rv-head h2{font-size:1.2rem;font-weight:800}
+.rv-status{margin:4px 0 0;font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.rv-list{overflow-y:auto;padding:12px 18px;display:flex;flex-direction:column;gap:10px;flex:1;min-height:80px}
+.rv-item{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--raised);animation:rvin .25s ease}
+@keyframes rvin{from{opacity:0;transform:translateY(4px)}}
+.rv-item.off{opacity:.55}
+.rv-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.rv-title{font:inherit;font-weight:700;border:1px solid transparent;border-radius:8px;padding:5px 8px;background:var(--surface);width:100%}
+.rv-title:focus{border-color:var(--accent)}
+.rv-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rv-meta label{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted);font-weight:600}
+.rv-meta input,.rv-meta select,.rv-steps input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface);font-size:.85rem;min-width:0;width:100%}
+.rv-note{margin:0;font-size:.82rem;color:var(--accent)}
+.rv-warn{margin:0;font-size:.82rem;color:var(--sun-ink);background:var(--sun-soft);border-radius:8px;padding:4px 8px}
+.rv-sub{margin:0;font-size:.82rem;color:var(--muted)}
+.rv-sub b{color:var(--ink);font-weight:600}
+.rv-stepsh{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--muted)}
+.rv-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;border-left:2px solid var(--line);padding-left:8px}
+.rv-steps li{display:grid;grid-template-columns:auto minmax(0,1fr) 140px auto;gap:6px;align-items:center}
+.rv-x{border:none;background:none;color:var(--muted);font-size:1.1rem;padding:2px 8px;border-radius:6px;line-height:1}
+.rv-x:hover{background:var(--line);color:var(--ink)}
+.rv-x.big{font-size:1.5rem}
+.rv-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
+.rv-foot .primary{min-width:150px}
+@media (max-width:560px){#review{width:100%;max-height:92vh;border-radius:18px 18px 0 0;margin-bottom:0}.rv-meta{grid-template-columns:1fr 1fr}.rv-meta label:last-child{grid-column:1 / -1}.rv-steps li{grid-template-columns:auto minmax(0,1fr) auto}.rv-steps li input[type=date]{grid-column:2}}
+
 /* weekly reports */
 .reports{padding:18px;display:flex;flex-direction:column;gap:14px}
 .rep-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -379,7 +412,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
   .detail{grid-template-columns:minmax(0,1fr);padding:4px 4px 16px}
 }
 @media (max-width:420px){.edit{grid-template-columns:minmax(0,1fr)}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
 <div class="page">
@@ -507,6 +540,20 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
     </section>
   </div>
 </div>
+
+<dialog id="review" aria-labelledby="rvTitle">
+  <div class="rv-head">
+    <div><h2 id="rvTitle">Check before adding</h2>
+      <p class="rv-status"><span class="spin" id="rvSpin" aria-hidden="true"></span><span id="rvStatus" role="status"></span></p></div>
+    <button type="button" class="rv-x big" id="rvClose" aria-label="Close without adding">×</button>
+  </div>
+  <div class="rv-list" id="rvList"></div>
+  <datalist id="rv-tags"></datalist>
+  <div class="rv-foot">
+    <button type="button" id="rvCancel">Cancel</button>
+    <button type="button" class="primary" id="rvAdd" disabled>Waiting for Claude…</button>
+  </div>
+</dialog>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -893,7 +940,7 @@ $("#addBtn").onclick = async () => {
   } catch(e){ flash("#capMsg", "Couldn't save your tasks (" + (e.code || "error") + "). Your text is still in the box; try again.", true); }
 };
 
-const taskFormat = () => `Reply with ONLY a JSON array. Each item: {"title": short action starting with a verb, "tags": 1-2 project names, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
+const taskFormat = () => `Reply in JSON Lines: one complete JSON object per line, one line per item, and nothing else (no array brackets, no code fences, no other text). If there is nothing to do, reply with nothing. Each object: {"title": short action starting with a verb, "tags": 1-2 project names, "priority": "high"|"med"|"low", "due": "YYYY-MM-DD" or "" if no date is implied, "estimate": minutes as a number (your best guess), "nextStep": the very first concrete action, under 15 words, "notes": any useful detail or ""}.
 Use the person's own words for things (for example "Uniforms", never "Team Wear"). Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.
 Projects already in use: ${allTags().join(", ") || "(none yet)"}. Reuse one of these whenever it fits; only make up a new short project name when the work clearly belongs to a different project.
 KEEP LINKED WORK TOGETHER. When several actions belong to ONE piece of work (same topic or same people, or one has to happen before another), return ONE item for the piece of work, named for the overall outcome, with "steps": [{"title", "due", "estimate", "nextStep"}] listed in the order they happen. Do not return those actions as separate items. Only things that really are unrelated become separate items.
@@ -901,9 +948,10 @@ If an item is a further step of an EXISTING open task in the list below, add "pa
 Existing open main tasks:
 ${state.tasks.filter(t => isOpen(t) && !t.parentId).map(t => "- " + t.title).slice(0, 80).join("\n") || "(none)"}`;
 
+// Claude's suggestions stream into a review pop-up; nothing is added until the person presses Add
 async function extractTasks(prompt, opts = {}, source = ""){
-  const items = await state.sample.json(prompt, { modelTier: "default", ...opts });
-  if (!Array.isArray(items)) throw { code: "empty" };
+  const items = await reviewTasks(prompt, opts, source);
+  if (!items) throw { code: "cancelled" };
   let added = 0, skipped = 0;
   for (const it of items) {
     if (source) it.notes = [it.notes, `From: ${source}`].filter(Boolean).join("\n");
@@ -916,22 +964,128 @@ async function extractTasks(prompt, opts = {}, source = ""){
   state.lastSkipped = skipped;
   return added;
 }
+
+const rv = { items: [], ctl: null, resolve: null, done: false };
+function cleanItem(o){
+  if (!o || typeof o !== "object" || !String(o.title || "").trim()) return null;
+  const day = d => /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d : "";
+  return { title: String(o.title).trim().slice(0, 300), tags: mergeTags(Array.isArray(o.tags) ? o.tags : o.tags ? [o.tags] : []),
+    priority: ["high","med","low"].includes(o.priority) ? o.priority : "med", due: day(o.due), estimate: Number(o.estimate) || 0,
+    nextStep: String(o.nextStep || ""), notes: String(o.notes || ""), partOf: String(o.partOf || ""),
+    steps: Array.isArray(o.steps) ? o.steps.filter(x => x && String(x.title || "").trim()).map(x => ({ title: String(x.title).trim().slice(0, 300), due: day(x.due), estimate: Number(x.estimate) || 0, nextStep: String(x.nextStep || "") })) : [],
+    include: true };
+}
+function rvCard(it, i){
+  const host = it.partOf && state.tasks.find(t => isOpen(t) && !t.parentId && norm(t.title) === norm(it.partOf));
+  const dup = !host && findDup(it.title);
+  if (dup && !it._dupSeen) it.include = false;   // only untick it the first time; the person can tick it back
+  it._dupSeen = true;
+  const el = document.createElement("div");
+  el.className = "rv-item" + (it.include ? "" : " off"); el.dataset.i = i;
+  el.innerHTML = `
+    <input type="checkbox" class="check" data-f="include" aria-label="Add this task" ${it.include ? "checked" : ""}>
+    <div class="rv-main">
+      <input class="rv-title" id="rv-t-${i}" data-f="title" value="${esc(it.title)}" aria-label="Task">
+      <div class="rv-meta">
+        <label>Due<input type="date" id="rv-d-${i}" data-f="due" value="${esc(it.due)}"></label>
+        <label>Project<input id="rv-p-${i}" data-f="tags" list="rv-tags" value="${esc(it.tags.join(", "))}" placeholder="None"></label>
+        <label>Priority<select id="rv-r-${i}" data-f="priority">${["high","med","low"].map(p => `<option value="${p}" ${it.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
+      </div>
+      ${host ? `<p class="rv-note">Adds as a step of <b>${esc(host.title)}</b></p>` : ""}
+      ${dup ? `<p class="rv-warn">Already on your board, so it's unticked. Tick it to add it anyway.</p>` : ""}
+      ${it.nextStep ? `<p class="rv-sub"><b>First step:</b> ${esc(it.nextStep)}</p>` : ""}
+      ${it.steps.length ? `<div class="rv-stepsh">Steps, in order</div><ol class="rv-steps">${it.steps.map((st, j) => `<li data-j="${j}">
+          <span class="stepno">${j + 1}</span>
+          <input id="rv-s-${i}-${j}" data-sf="title" value="${esc(st.title)}" aria-label="Step ${j + 1}">
+          <input type="date" id="rv-sd-${i}-${j}" data-sf="due" value="${esc(st.due)}" aria-label="Step ${j + 1} due date">
+          <button type="button" class="rv-x" data-rmstep="${j}" aria-label="Remove step ${j + 1}">×</button></li>`).join("")}</ol>` : ""}
+      ${it.notes ? `<p class="rv-sub">${esc(it.notes)}</p>` : ""}
+    </div>`;
+  return el;
+}
+function rvCount(){
+  const n = rv.items.filter(x => x.include).reduce((s, x) => s + 1 + x.steps.length, 0);
+  const b = $("#rvAdd");
+  b.disabled = !rv.done || !n;
+  b.textContent = !rv.done ? "Waiting for Claude…" : n ? `Add ${n} task${n === 1 ? "" : "s"}` : "Nothing ticked";
+}
+function rvStatus(text, busy){ $("#rvStatus").textContent = text; $("#rvSpin").hidden = !busy; }
+
+function reviewTasks(prompt, opts, source){
+  return new Promise(resolve => {
+    rv.items = []; rv.done = false; rv.resolve = resolve; rv.ctl = new AbortController();
+    $("#rvList").innerHTML = ""; $("#rvTitle").textContent = source ? `Tasks from ${source}` : "Check before adding";
+    $("#rv-tags").innerHTML = allTags().map(g => `<option value="${esc(g)}">`).join("");
+    rvStatus("Claude is reading…", true); rvCount();
+    const dlg = $("#review"); if (!dlg.open) dlg.showModal();
+    let buf = "";
+    const take = line => {
+      line = line.trim().replace(/^```(json)?|```$/g, "").replace(/,$/, "").trim();
+      if (!line.startsWith("{")) return;
+      let o; try { o = JSON.parse(line); } catch { return; }
+      const it = cleanItem(o); if (!it) return;
+      rv.items.push(it); $("#rvList").append(rvCard(it, rv.items.length - 1));
+      rvStatus(`Claude is reading… ${rv.items.length} found so far`, true); rvCount();
+    };
+    state.sample(prompt, { modelTier: "quick", cache: false, signal: rv.ctl.signal, ...opts,
+      onText: ({ delta }) => { buf += delta; const lines = buf.split("\n"); buf = lines.pop(); lines.forEach(take); } })
+    .then(({ text }) => {
+      take(buf); buf = "";
+      if (!rv.items.length) {   // fall back to a plain JSON array if that's what came back
+        try { const arr = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1)); if (Array.isArray(arr)) arr.forEach(o => take(JSON.stringify(o))); } catch {}
+      }
+      rv.done = true;
+      rvStatus(rv.items.length ? `Claude found ${rv.items.length} item${rv.items.length === 1 ? "" : "s"}. Check them, change anything that's wrong, then add.` : "Claude didn't find any tasks in that.", false);
+      rvCount();
+    })
+    .catch(e => {
+      if (e?.code === "cancelled") return;
+      rv.done = true;
+      rvStatus(sampleErr(e) || "Claude stopped before finishing." + (rv.items.length ? " You can still add what it found." : " Close this and try again."), false);
+      rvCount();
+    });
+  });
+}
+function rvClose(result){
+  rv.ctl?.abort(); const r = rv.resolve; rv.resolve = null;
+  if ($("#review").open) $("#review").close();
+  r && r(result);
+}
+$("#rvAdd").onclick = () => rvClose(rv.items.filter(x => x.include).map(({ include, _dupSeen, ...x }) => x));
+$("#rvCancel").onclick = () => rvClose(null);
+$("#rvClose").onclick = () => rvClose(null);
+$("#review").addEventListener("cancel", e => { e.preventDefault(); rvClose(null); });   // Esc
+$("#rvList").addEventListener("input", e => {
+  const card = e.target.closest(".rv-item"); if (!card) return; const it = rv.items[card.dataset.i];
+  const f = e.target.dataset.f, sf = e.target.dataset.sf;
+  if (sf) { const j = e.target.closest("li").dataset.j; it.steps[j][sf] = e.target.value; return; }
+  if (f === "include") { it.include = e.target.checked; card.classList.toggle("off", !it.include); return rvCount(); }
+  if (f === "tags") it.tags = e.target.value.split(",").map(cleanTag).filter(Boolean);
+  else if (f) it[f] = e.target.value;
+});
+$("#rvList").addEventListener("click", e => {
+  const x = e.target.closest("[data-rmstep]"); if (!x) return;
+  const card = x.closest(".rv-item"), it = rv.items[card.dataset.i];
+  it.steps.splice(Number(x.dataset.rmstep), 1);
+  card.replaceWith(rvCard(it, Number(card.dataset.i))); rvCount();
+});
+
 const sampleErr = e => e.code==="not_granted" ? "Claude wasn't allowed to help. Allow it from the page's permissions and try again."
   : e.code==="rate_limited" ? "Too many requests. Wait a minute and try again." : null;
 
 $("#sortBtn").onclick = async () => {
   const text = $("#dump").value.trim();
   if (!text) return flash("#capMsg","Write what's on your plate first.", true);
-  $("#sortBtn").disabled = true; flash("#capMsg","Claude is sorting it…");
+  $("#sortBtn").disabled = true; flash("#capMsg","");
   try {
     const n = await extractTasks(`You turn a person's brain-dump of work into a clean task list. Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
 ${taskFormat()}
 
 Brain-dump:
 ${text}`);
-    if (!n && !state.lastSkipped) throw { code: "empty" };
+    if (!n && !state.lastSkipped) { flash("#capMsg", "Nothing added."); return; }
     $("#dump").value = ""; flash("#capMsg", `Added ${n} task${n===1?"":"s"}.` + (state.lastSkipped ? ` Skipped ${state.lastSkipped} already on your board.` : ""));
-  } catch(e){ flash("#capMsg", sampleErr(e) || "Couldn't sort that. Try again or use \"Add as written\".", true); }
+  } catch(e){ flash("#capMsg", e.code === "cancelled" ? "Nothing added. Your text is still in the box." : sampleErr(e) || "Couldn't sort that. Try again or use \"Add as written\".", e.code !== "cancelled"); }
   finally { $("#sortBtn").disabled = false; }
 };
 
@@ -976,9 +1130,9 @@ $("#fileIn").onchange = async () => {
     try {
       const got = await readFile(f);
       const intro = `Below is a document the person uploaded ("${f.name}"). Today is ${new Date().toDateString()} (ISO ${iso(new Date())}).
-Pull out the work THEY need to do: action items, requests made of them, deadlines, follow-ups, things to prepare or reply to. Ignore background information that needs no action. If there is nothing to do, reply [].
+Pull out the work THEY need to do: action items, requests made of them, deadlines, follow-ups, things to prepare or reply to. Ignore background information that needs no action. If there is nothing to do, reply with nothing.
 ${taskFormat()}`;
-      flash("#capMsg", `Claude is reading ${f.name}…`);
+      flash("#capMsg", "");
       if (got.image) {
         const lim = await state.sample.limits().catch(() => null);
         if (!lim?.images) throw { code: "no_images" };
@@ -989,6 +1143,7 @@ ${taskFormat()}`;
         total += await extractTasks(intro + "\n\nDocument:\n" + text.slice(0, 150000), {}, f.name);
       }
     } catch(e){
+      if (e.code === "cancelled") { failed.push(f.name + ": not added (you cancelled)"); continue; }
       failed.push(f.name + ": " + (sampleErr(e) || {old_doc:"save it as .docx and try again", no_text:"no readable text (if it's a scan, upload a photo of it instead)", no_images:"photos can't be read here", empty:"Claude couldn't make sense of it"}[e.code] || "couldn't be read"));
     }
   }
