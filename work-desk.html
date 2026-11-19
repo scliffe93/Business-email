@@ -381,6 +381,10 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 .linkin input{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--raised);font-weight:400}
 @media (max-width:860px){.steps{margin-left:14px}}
 
+.morestep{all:unset;cursor:pointer;display:block;font-size:.8rem;color:var(--muted);padding:6px 8px;border-radius:6px}
+.morestep:hover{color:var(--accent);background:var(--raised)}
+.morestep:focus-visible{outline:2px solid var(--accent)}
+
 /* detail drawer */
 .detail{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:6px 6px 18px 36px}
 .updates{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -675,8 +679,9 @@ const STATUS = {
   dropped: { label: "Not needed",         cls: "st-drop" },
 };
 const TABS = [
-  ["today",   "Today",       t => isOpen(t) && t.due && daysFrom(t.due) <= 0],
-  ["week",    "This week",   t => isOpen(t) && t.due && daysFrom(t.due) <= 7],
+  ["overdue", "Overdue",     t => isOpen(t) && t.due && daysFrom(t.due) < 0],
+  ["today",   "Today",       t => isOpen(t) && t.due && daysFrom(t.due) === 0],
+  ["week",    "This week",   t => isOpen(t) && t.due && daysFrom(t.due) >= 0 && daysFrom(t.due) <= 7],
   ["doing",   "In progress", t => t.status === "doing" || t.status === "review"],
   ["waiting", "Waiting / stuck", t => t.status === "waiting" || t.status === "stuck"],
   ["nodate",  "No date",     t => isOpen(t) && !t.due],
@@ -715,11 +720,16 @@ async function addStep(parentId, title, extra = {}){
   return r;
 }
 
-function groupHTML(top){
+// In "All open" every step shows. In a filtered tab (Today, Overdue…) only the steps that belong in that tab show,
+// plus a link to the rest, so the tab never lists work from other days.
+function groupHTML(top, shown){
   const steps = top.parentId ? [] : stepsOf(top.id);
   if (!steps.length) return rowHTML(top);
   const shut = state.collapsed.has(top.id);
-  return `<div class="group">${rowHTML(top, { steps })}${shut ? "" : `<div class="steps">${steps.map((s, i) => rowHTML(s, { step: i + 1 })).join("")}</div>`}</div>`;
+  const vis = shown ? steps.map((s, i) => [s, i]).filter(([s]) => shown.has(s.id)) : steps.map((s, i) => [s, i]);
+  const rest = steps.length - vis.length;
+  return `<div class="group">${rowHTML(top, { steps })}${shut ? "" : `<div class="steps">${vis.map(([s, i]) => rowHTML(s, { step: i + 1 })).join("")}${
+    rest ? `<button class="morestep" data-open-task="${top.id}">+ ${rest} other step${rest === 1 ? "" : "s"} not in this view</button>` : ""}</div>`}</div>`;
 }
 
 function render(){
@@ -783,9 +793,10 @@ function render(){
     // in Today, a piece of work stays on screen for the rest of the day after you tick one of its steps
     if (state.tab === "today") list = list.concat(state.tasks.filter(t => t.parentId && !isOpen(t) && t.closedAt && iso(new Date(t.closedAt)) === todayStr && byTag(t)));
     for (const t of list) { const top = parentOf(t) || t; if (!seen.has(top.id)) { seen.add(top.id); tops.push(top); } }
-    rowsHTML = tops.map(groupHTML).join("");
+    const shown = state.tab === "all" ? null : new Set(list.map(t => t.id));
+    rowsHTML = tops.map(top => groupHTML(top, shown)).join("");
   }
-  const emptyCopy = { today: "Nothing due today or overdue.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
+  const emptyCopy = { overdue: "Nothing overdue.", today: "Nothing due today.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
     waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet.",
     nodate: "Every open task has a date." }[state.tab];
   const keep = {}, focusId = document.activeElement?.id, openDetail = document.querySelector("#board .detail");
