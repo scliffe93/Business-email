@@ -148,6 +148,15 @@ button.link:hover{color:var(--accent);background:var(--accent-soft)}
 [hidden]{display:none!important}
 
 /* compact today */
+.kpis{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.kpi{border:none;border-radius:8px;padding:4px 10px;font-size:.82rem;font-weight:600;display:inline-flex;gap:5px;align-items:baseline;background:var(--raised);color:var(--muted);cursor:pointer}
+.kpi b{font-family:var(--f-display);font-size:1.05rem;font-weight:800;color:var(--ink)}
+.kpi.hot{background:var(--hot-soft);color:var(--hot)} .kpi.hot b{color:var(--hot)}
+.kpi.sun{background:var(--sun-soft);color:var(--sun-ink)} .kpi.sun b{color:var(--sun-ink)}
+.kpi.wait b{color:var(--st-wait)}
+.kpi.zero{opacity:.6}
+.kpi.plain{cursor:default;background:none;padding-inline:4px}
+.kpi:not(.plain):hover{filter:brightness(.96)}
 .today{padding:14px 16px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:18px;align-items:start}
 .td-left{display:flex;gap:14px;align-items:center;min-width:0}
 .today .ring{width:60px;height:60px;flex:none}
@@ -431,10 +440,10 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 
   <section class="card checkin" aria-label="Check-in">
     <div class="ci-where">
-      <span class="ci-label">Where you're at</span>
-      <button type="button" class="ci-note" id="whereToggle" aria-expanded="false" title="Show the full note"><span id="whereText">Nothing yet. Tell Claude what you're doing and it keeps a running note here.</span></button>
+      <span class="ci-label">Now</span>
+      <button type="button" class="ci-note" id="whereToggle" aria-expanded="false" title="Show the full note"><span id="whereText">No note yet.</span></button>
       <span class="where-when" id="whereWhen"></span>
-      <button type="button" class="link" id="threadBtn" aria-expanded="false" aria-controls="threadWrap">Conversation</button>
+      <button type="button" class="link" id="threadBtn" aria-expanded="false" aria-controls="threadWrap">Chat</button>
     </div>
     <form class="composer" id="composer">
       <button type="button" class="mic" data-mic="say" aria-label="Speak your check-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
@@ -445,57 +454,55 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
     <div class="ci-thread" id="threadWrap" hidden>
       <div class="thread" id="thread" aria-live="polite"></div>
       <div class="starters" id="starters">
-        <button class="starter" data-say="Here's what I've got on today: ">Here's my day…</button>
-        <button class="starter" data-say="What should I focus on right now?">What should I focus on?</button>
-        <button class="starter" data-say="Where am I up to? Give me a quick recap.">Where am I up to?</button>
-        <button class="starter" data-say="I've just finished ">I've just finished…</button>
+        <button class="starter" data-say="Today I've got: ">My day…</button>
+        <button class="starter" data-say="What should I focus on right now?">Focus?</button>
+        <button class="starter" data-say="Quick recap: where am I up to?">Recap</button>
+        <button class="starter" data-say="Just finished: ">Finished…</button>
       </div>
     </div>
     <span class="msg" id="talkMsg" role="status"></span>
   </section>
 
   <nav class="views" role="tablist" aria-label="Sections">
-    <button role="tab" class="view-tab" data-view="add" aria-controls="view-add">+ Add tasks</button>
+    <button role="tab" class="view-tab" data-view="add" aria-controls="view-add">+ Add</button>
     <button role="tab" class="view-tab" data-view="tasks" aria-controls="view-tasks">Tasks <span class="tab-n" id="vtOpen"></span></button>
     <button role="tab" class="view-tab" data-view="reports" aria-controls="view-reports">Reports</button>
   </nav>
 
   <div class="view" id="view-add" role="tabpanel" hidden>
     <section class="card capture" aria-labelledby="capH">
-      <h3 id="capH">What's on your plate?</h3>
+      <h3 id="capH">Add tasks</h3>
       <div class="dumpwrap">
-        <textarea id="dump" placeholder="Type or press the microphone and say it:&#10;Send Acme the revised quote by Thursday&#10;! Chase unpaid invoice from March&#10;Prep slides for Monday's team meeting, about 2 hours"></textarea>
+        <textarea id="dump" placeholder="Type or speak your tasks…"></textarea>
         <button type="button" class="mic big" data-mic="dump" aria-label="Speak your tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Speak</span></button>
       </div>
       <div class="partial" id="partial-dump" aria-live="polite"></div>
       <div class="btnrow">
-        <button class="primary" id="sortBtn">Sort it for me</button>
-        <button id="addBtn">Add as written</button>
-        <button id="uploadBtn">Upload a document or photo</button>
+        <button class="primary" id="sortBtn" title="Claude splits it into tasks with dates, projects and steps">Sort with Claude</button>
+        <button id="addBtn" title="One task per line. Start a line with ! for urgent">Add as is</button>
+        <button id="uploadBtn" title="PDF, Word, text or a photo of notes. Files aren't stored">Upload</button>
         <input type="file" id="fileIn" multiple hidden accept=".pdf,.docx,.txt,.md,.csv,.eml,.rtf,.html,image/*">
       </div>
       <span class="msg" id="capMsg" role="status"></span>
-      <p class="hint-line"><b>Sort it for me</b> splits what you say into tasks with dates, projects and first steps. <b>Add as written</b> adds one task per line (start a line with ! for urgent). Uploads: PDFs, Word, text or a photo of notes; files aren't stored.</p>
     </section>
   </div>
 
   <div class="view" id="view-tasks" role="tabpanel" hidden>
     <section class="card today" aria-labelledby="greet">
       <div class="td-left">
-        <svg class="ring" viewBox="0 0 84 84" role="img" aria-labelledby="ringHead">
+        <svg class="ring" viewBox="0 0 84 84" role="img" aria-label="Today's progress">
           <circle class="track" cx="42" cy="42" r="36"/>
           <circle class="val" id="ringVal" cx="42" cy="42" r="36" transform="rotate(-90 42 42)" stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
           <text id="ringText" x="42" y="50" text-anchor="middle">0</text>
         </svg>
         <div class="td-text">
-          <h2 id="greet">Good morning</h2>
-          <p id="heroSummary">Loading your day…</p>
-          <p class="td-ring"><b id="ringHead">Nothing due today</b> · <span id="ringSub"></span></p>
+          <h2 id="greet">Today</h2>
+          <div class="kpis" id="heroSummary"></div>
         </div>
       </div>
       <div class="td-plan">
-        <div class="plan-head"><h3>Today's plan</h3><button id="planBtn" class="small">Plan my day</button></div>
-        <div id="planList" class="planlist"><p class="dim">No plan yet. Press "Plan my day" for a short, timed list.</p></div>
+        <div class="plan-head"><h3>Plan</h3><button id="planBtn" class="small">Plan my day</button></div>
+        <div id="planList" class="planlist"><p class="dim">No plan yet.</p></div>
         <span class="msg" id="planMsg" role="status"></span>
       </div>
     </section>
@@ -506,7 +513,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
         <span class="msg" id="boardMsg" role="status"></span>
         <div class="search">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <input type="search" id="q" placeholder="Search tasks, notes, updates, people…" aria-label="Search tasks" autocomplete="off">
+          <input type="search" id="q" placeholder="Search…" aria-label="Search tasks" autocomplete="off">
         </div>
       </div>
       <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
@@ -518,16 +525,16 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
   <div class="view" id="view-reports" role="tabpanel" hidden>
     <section class="card reports" aria-labelledby="repH">
       <div class="rep-top">
-        <div><div class="label">End of week</div><h2 id="repH">Weekly reports</h2></div>
-        <button class="primary" id="repBtn">Write this week's report</button>
+        <h2 id="repH">Weekly reports</h2>
+        <button class="primary" id="repBtn">Write report</button>
       </div>
-      <div class="nudge" id="repNudge" hidden>It's the end of the week. Write your report to see what you got done.</div>
+      <div class="nudge" id="repNudge" hidden>This week's report isn't written yet.</div>
       <span class="msg" id="repMsg" role="status"></span>
       <div id="repList"></div>
     </section>
 
     <section class="card overview" aria-labelledby="ovH">
-      <h3 id="ovH" class="label">Where you are now</h3>
+      <h3 id="ovH" class="label">Now</h3>
       <div class="stats">
         <div class="stat hot"><b id="sOver">0</b><span>Overdue</span></div>
         <div class="stat sun"><b id="sToday">0</b><span>Due today</span></div>
@@ -748,19 +755,18 @@ function render(){
 
   // hero
   const h = new Date().getHours();
-  $("#greet").textContent = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  $("#greet").textContent = "Today";
   const nowList = [...over, ...dueToday];
   const mins = nowList.reduce((s,t) => s + (t.estimate||30) * (1 - (t.progress||0)/100), 0);
   const waitingN = open.filter(t => t.status === "waiting" || t.status === "stuck").length;
-  $("#heroSummary").innerHTML = !state.db ? "Loading your day…"
-    : !open.length ? (state.tasks.length ? "Everything is done. Add what's next, or enjoy the clear desk." : "Your desk is empty. Tell the check-in what you're doing, or add work below.")
-    : `<b>${nowList.length} task${nowList.length===1?"":"s"}</b> for today${nowList.length?`, about <b>${fmtHours(Math.round(mins/5)*5)}</b> of work left`:""}.` +
-      (over.length ? ` <b>${over.length} overdue.</b>` : "") + (waitingN ? ` ${waitingN} waiting on someone.` : "") + ` ${open.length} open in total.`;
+  const kpi = (n, label, tab, cls) => `<button class="kpi ${n ? cls : "zero"}" data-gotab="${tab}"><b>${n}</b>${label}</button>`;
+  $("#heroSummary").innerHTML = !state.db ? `<span class="dim">Loading…</span>`
+    : kpi(over.length, "overdue", "overdue", "hot") + kpi(dueToday.length, "today", "today", "sun") + kpi(waitingN, "waiting", "waiting", "wait") +
+      (nowList.length ? `<span class="kpi plain">~${fmtHours(Math.round(mins/15)*15 || 15)} left</span>` : "");
   const goal = doneToday.length + nowList.length, frac = goal ? doneToday.length/goal : 0;
   $("#ringVal").setAttribute("stroke-dashoffset", (226.2 * (1 - frac)).toFixed(1));
   $("#ringText").textContent = goal ? `${doneToday.length}/${goal}` : doneToday.length;
-  $("#ringHead").textContent = !goal ? "Nothing due today" : frac === 1 ? "Today's work is done" : `${goal - doneToday.length} left today`;
-  $("#ringSub").textContent = doneToday.length ? `${doneToday.length} finished so far.` : "Tick tasks off as you finish them.";
+  $("#ringVal").closest("svg").setAttribute("aria-label", goal ? `${doneToday.length} of ${goal} done today` : "Nothing due today");
 
   // 14-day load
   const loads = Array.from({length:14}, () => 0);
@@ -803,7 +809,7 @@ function render(){
   if (openDetail && openDetail.dataset.id === state.openEdit)   // same task still open: keep what's being typed
     openDetail.querySelectorAll("[id]").forEach(el => { if ("value" in el && el.type !== "range") keep[el.id] = el.value; });
   $("#board").innerHTML = !state.db ? `<div class="empty-state">Loading your tasks…</div>`
-    : state.tasks.length === 0 ? `<div class="empty-state"><b>Your board is empty</b>Talk to the check-in, or type, speak or upload your work in "What's on your plate?" below.</div>`
+    : state.tasks.length === 0 ? `<div class="empty-state">No tasks yet. Use <b>+ Add</b>.</div>`
     : `<div class="row head" aria-hidden="true"><span></span><span>Task</span><span>Status</span><span>Progress</span><span>Due</span><span>Waiting on</span></div>` +
       (q ? `<div class="search-note">${list.length} result${list.length===1?"":"s"} for “${esc(state.q)}” across all tasks<button class="link" data-clear-search>Clear search</button></div>` : "") +
       (list.length ? rowsHTML : `<div class="empty-state">${q ? "Nothing matches. Try another word, or a person's name." : emptyCopy}</div>`);
@@ -838,7 +844,7 @@ function rowHTML(t, o = {}){
           ${t.updates?.length ? `<span class="ucount" title="Updates">${t.updates.length}</span>` : ""}</span>
         ${tagsOf(t).length ? `<span class="tagrow">${tagsOf(t).map(tagChip).join("")}</span>` : ""}
         ${par ? `<span class="r-sub partof">Step of: <b>${esc(par.title)}</b></span>` : ""}
-        ${lu ? `<span class="r-sub">${hl(lu.text)} <i>· ${ago(lu.at)}</i></span>` : t.nextStep && open ? `<span class="r-sub">Next: ${esc(t.nextStep)}</span>` : ""}
+        ${lu ? `<span class="r-sub">${hl(lu.text)} <i>· ${ago(lu.at)}</i></span>` : ""}
       </button>
       </div>
       <label class="r-status"><span class="vh">Status</span>
@@ -867,9 +873,9 @@ function linkBoxHTML(t){
         <button class="linklike" data-open-task="${s.id}">${esc(s.title)}</button>
         <span class="chip">${s.status === "done" ? "Done " + fmtD(s.closedAt) : (STATUS[s.status]?.label || "") + (s.due ? " · " + fmtDue(s.due).replace(/^Due /, "") : "")}</span>
         ${state.canWrite ? `<span class="mv"><button type="button" data-move="-1" data-id="${s.id}" aria-label="Move up" ${i===0?"disabled":""}>↑</button><button type="button" data-move="1" data-id="${s.id}" aria-label="Move down" ${i===steps.length-1?"disabled":""}>↓</button></span>` : ""}
-      </li>`).join("")}</ol>` : `<p class="dim">Break this into steps. They stay listed here in order, and ticked ones stay visible.</p>`}
+      </li>`).join("")}</ol>` : ""}
     ${state.canWrite ? `<form class="stepform" data-parent="${t.id}"><input id="step-${t.id}" name="title" placeholder="Add a step…" autocomplete="off" aria-label="New step"><button type="submit">Add step</button></form>
-      ${!steps.length && candidates.length ? `<div class="linkin"><label for="linkin-${t.id}">Or make this a step of another task</label>
+      ${!steps.length && candidates.length ? `<div class="linkin"><label for="linkin-${t.id}">Or put under…</label>
         <input id="linkin-${t.id}" list="parentlist-${t.id}" data-linkin="${t.id}" placeholder="Start typing a task name…" autocomplete="off">
         <datalist id="parentlist-${t.id}">${candidates.map(x => `<option value="${esc(x.title)}">`).join("")}</datalist></div>` : ""}` : ""}
   </div>`;
@@ -881,16 +887,16 @@ function detailHTML(t){
       ${linkBoxHTML(t)}
       <h3 class="label">Updates</h3>
       ${state.canWrite ? `<form class="upform" data-id="${t.id}">
-        <textarea id="u-${t.id}" name="text" rows="2" placeholder="Write an update: needs action from…, waiting for…, done the first draft…" aria-label="Write an update"></textarea>
+        <textarea id="u-${t.id}" name="text" rows="2" placeholder="Add an update…" aria-label="Write an update"></textarea>
         <div class="upbar">
-          <button type="button" class="starter" data-act="quick" data-id="${t.id}" data-say="Needs action from ">Needs action from…</button>
-          <button type="button" class="starter" data-act="quick" data-id="${t.id}" data-say="Waiting for ">Waiting for…</button>
-          <button type="button" class="starter" data-act="quick" data-id="${t.id}" data-say="Blocked by ">Blocked by…</button>
-          <button class="primary" type="submit">Post update</button>
+          <button type="button" class="starter" data-act="quick" data-id="${t.id}" data-say="Needs action from ">Needs action…</button>
+          <button type="button" class="starter" data-act="quick" data-id="${t.id}" data-say="Waiting for ">Waiting…</button>
+          <button type="button" class="starter" data-act="quick" data-id="${t.id}" data-say="Blocked by ">Blocked…</button>
+          <button class="primary" type="submit">Post</button>
         </div></form>` : ""}
       <div class="ulist">${ups.length ? ups.map(u => `<div class="upd"><p>${esc(u.text)}</p><span>${new Date(u.at).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</span></div>`).join("")
-        : `<p class="dim">No updates yet. Add context as things happen: who it's waiting on, what's been done, what's next.</p>`}</div>
-      ${t.prep && open ? `<div class="prep"><div class="label">Prepared by Claude</div><pre>${esc(t.prep)}</pre></div>` : ""}
+        : ""}</div>
+      ${t.prep && open ? `<div class="prep"><div class="label">Prep</div><pre>${esc(t.prep)}</pre></div>` : ""}
     </section>
     <form class="edit" data-id="${t.id}">
       <label class="wide">Task<input id="e-title-${t.id}" name="title" value="${esc(t.title)}" required></label>
@@ -901,13 +907,13 @@ function detailHTML(t){
       <label>Time (minutes)<input id="e-est-${t.id}" type="number" min="0" step="5" name="estimate" value="${t.estimate||""}"></label>
       <div class="wide"><label for="tagin-${t.id}">Projects</label>
         <div class="tagedit">${tagsOf(t).map(g => `<span class="tag ${tagClass(g)}">${esc(g)}${state.canWrite ? `<button type="button" data-untag="${esc(g)}" data-id="${t.id}" aria-label="Remove ${esc(g)}">×</button>` : ""}</span>`).join("")}
-          ${state.canWrite ? `<input id="tagin-${t.id}" list="taglist" data-tagin="${t.id}" placeholder="${tagsOf(t).length ? "Add another…" : "Add a project, e.g. Catering"}" autocomplete="off">` : ""}</div>
+          ${state.canWrite ? `<input id="tagin-${t.id}" list="taglist" data-tagin="${t.id}" placeholder="${tagsOf(t).length ? "Add…" : "Add project…"}" autocomplete="off">` : ""}</div>
         <datalist id="taglist">${allTags().map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
       <label class="wide">Next step<input id="e-next-${t.id}" name="nextStep" value="${esc(t.nextStep)}"></label>
       <label class="wide">Notes<textarea id="e-notes-${t.id}" name="notes" rows="3">${esc(t.notes)}</textarea></label>
       ${state.canWrite ? `<div class="wide formbar">
         <button class="primary" type="submit">Save</button>
-        <button type="button" data-act="prep" data-id="${t.id}" ${!state.sample||busy?"disabled":""}>${busy?"Prepping…":t.prep?"Re-prep with Claude":"Prep with Claude"}</button>
+        <button type="button" data-act="prep" data-id="${t.id}" ${!state.sample||busy?"disabled":""}>${busy?"Prepping…":t.prep?"Re-prep":"Prep"}</button>
         ${open ? `<button type="button" class="link" data-act="drop" data-id="${t.id}">Don't need</button>` : `<button type="button" class="link" data-act="delete" data-id="${t.id}">Delete</button>`}
       </div>` : ""}
     </form>
@@ -1003,7 +1009,7 @@ function rvCard(it, i){
         <label>Priority<select id="rv-r-${i}" data-f="priority">${["high","med","low"].map(p => `<option value="${p}" ${it.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
       </div>
       ${host ? `<p class="rv-note">Adds as a step of <b>${esc(host.title)}</b></p>` : ""}
-      ${dup ? `<p class="rv-warn">Already on your board, so it's unticked. Tick it to add it anyway.</p>` : ""}
+      ${dup ? `<p class="rv-warn">Already on your board</p>` : ""}
       ${it.nextStep ? `<p class="rv-sub"><b>First step:</b> ${esc(it.nextStep)}</p>` : ""}
       ${it.steps.length ? `<div class="rv-stepsh">Steps, in order</div><ol class="rv-steps">${it.steps.map((st, j) => `<li data-j="${j}">
           <span class="stepno">${j + 1}</span>
@@ -1027,7 +1033,7 @@ function reviewTasks(prompt, opts, source){
     rv.items = []; rv.done = false; rv.resolve = resolve; rv.ctl = new AbortController();
     $("#rvList").innerHTML = ""; $("#rvTitle").textContent = source ? `Tasks from ${source}` : "Check before adding";
     $("#rv-tags").innerHTML = allTags().map(g => `<option value="${esc(g)}">`).join("");
-    rvStatus("Claude is reading…", true); rvCount();
+    rvStatus("Reading…", true); rvCount();
     const dlg = $("#review"); if (!dlg.open) dlg.showModal();
     let buf = "";
     const take = line => {
@@ -1036,7 +1042,7 @@ function reviewTasks(prompt, opts, source){
       let o; try { o = JSON.parse(line); } catch { return; }
       const it = cleanItem(o); if (!it) return;
       rv.items.push(it); $("#rvList").append(rvCard(it, rv.items.length - 1));
-      rvStatus(`Claude is reading… ${rv.items.length} found so far`, true); rvCount();
+      rvStatus(`Reading… ${rv.items.length} found`, true); rvCount();
     };
     state.sample(prompt, { modelTier: "quick", cache: false, signal: rv.ctl.signal, ...opts,
       onText: ({ delta }) => { buf += delta; const lines = buf.split("\n"); buf = lines.pop(); lines.forEach(take); } })
@@ -1046,7 +1052,7 @@ function reviewTasks(prompt, opts, source){
         try { const arr = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1)); if (Array.isArray(arr)) arr.forEach(o => take(JSON.stringify(o))); } catch {}
       }
       rv.done = true;
-      rvStatus(rv.items.length ? `Claude found ${rv.items.length} item${rv.items.length === 1 ? "" : "s"}. Check them, change anything that's wrong, then add.` : "Claude didn't find any tasks in that.", false);
+      rvStatus(rv.items.length ? `${rv.items.length} found. Check, then add.` : "No tasks found.", false);
       rvCount();
     })
     .catch(e => {
@@ -1176,7 +1182,7 @@ Reply with ONLY this JSON:
  "blocks": [{"time": "HH:MM", "task": "the task title copied EXACTLY from the list", "do": "what to get done, at most 8 words"}],
  "getAhead": "at most 12 words, or empty",
  "canWait": "up to 4 short task titles, comma-separated, or empty"}
-Rules: at most 6 blocks, first block starts at ${startHM}, times in order. Overdue and due-today work first, then urgent, then things that unblock other people. Skip tasks that are only waiting on someone else unless a chase is needed.
+Rules: at most 5 blocks, first block starts at ${startHM}, times in order. Overdue and due-today work first, then urgent, then things that unblock other people. Skip tasks that are only waiting on someone else unless a chase is needed.
 
 Open tasks:
 ${list}`, { cache: false });
@@ -1284,7 +1290,7 @@ function renderTalk(pending){
     html += `<div class="bubble ${m.role==="user"?"me":"ai"}">${esc(m.text)}${m.actions?.length ? `<span class="acts">${m.actions.map(esc).join(" · ")}</span>` : ""}</div>`;
   }
   if (pending) html += `<div class="bubble me">${esc(pending.user)}</div><div class="bubble ai">${esc(pending.reply || "Thinking…")}${pending.actions.length ? `<span class="acts">${pending.actions.map(esc).join(" · ")}</span>` : ""}</div>`;
-  th.innerHTML = html || `<div class="thread-empty">${state.db ? "No conversation yet. Tell it what you're doing today, what you've finished, or ask what to focus on. It can add, update and tick off tasks for you." : "Loading…"}</div>`;
+  th.innerHTML = html || `<div class="thread-empty">${state.db ? "Say what you've done or ask what's next." : "Loading…"}</div>`;
   if (atBottom || pending) th.scrollTop = th.scrollHeight;
   $("#starters").hidden = !!pending;
   $("#sendBtn").disabled = state.talking || !state.sample || !state.canWrite;
@@ -1317,7 +1323,7 @@ function chatTools(actions){
     { name: "add_update", description: "Post a short status update to one task's update log (like a comment on a board item), e.g. 'Needs sign-off from Sam' or 'First draft done'. If it says who it's waiting on, the task is marked as waiting on them.",
       inputSchema: { type:"object", properties: { id:{type:"string"}, text:{type:"string"} }, required:["id","text"] },
       async execute(i){ const t = find(i.id); await postUpdate(t, String(i.text)); actions.push("Update on: " + t.title); renderTalk(state.pendingTalk); return "posted"; } },
-    { name: "set_where_im_at", description: "Replace the short 'Where you're at' note shown at the top of the check-in. Call this at the end of EVERY reply. 3-6 short lines: what they're working on now, what's done today, what's next, anything blocking or worrying them.",
+    { name: "set_where_im_at", description: "Replace the short 'Where you're at' note shown at the top of the check-in. Call this at the end of EVERY reply. At most 2 short lines, under 20 words in total: what they're on now and what's next (or what's blocking).",
       inputSchema: { type:"object", properties: { note:{type:"string"} }, required:["note"] },
       async execute(i){ const s = { text: String(i.note).slice(0,1500), at: new Date().toISOString() }; state.status = s; await state.db.doc("meta/status").set(s); renderTalk(state.pendingTalk); return "saved"; } },
   ];
@@ -1331,7 +1337,7 @@ async function talk(text){
   state.pendingTalk = { user: text, reply: "", actions };
   if ($("#threadWrap").hidden) $("#threadBtn").click();
   renderTalk(state.pendingTalk);
-  const rules = `You are the person's work companion inside their Work Desk. You talk like a calm, practical colleague: short replies (usually under 120 words), plain text, no markdown headings or bold. Today is ${new Date().toLocaleString()} (ISO date ${iso(new Date())}).
+  const rules = `You are the person's work companion inside their Work Desk. You talk like a calm, practical colleague: very short replies (at most 3 short lines or bullets, under 50 words, unless they ask for a draft), plain text, no markdown headings or bold. Today is ${new Date().toLocaleString()} (ISO date ${iso(new Date())}).
 Use their own words for things (for example "Uniforms", never "Team Wear").
 Earlier messages in this conversation describe the board as it was then. Tasks may have been finished or changed since, so always go by the task list below, and don't apologise for or correct earlier answers just because things have moved on.
 Your jobs:
@@ -1474,7 +1480,7 @@ function repTable(bp){
 function renderReports(){
   const w = weekInfo(), day = new Date().getDay(), have = state.reports.some(r => r.week === w.id);
   $("#repNudge").hidden = have || !(day === 5 || day === 6 || day === 0) || !state.tasks.length;
-  $("#repBtn").textContent = have ? "Rewrite this week's report" : "Write this week's report";
+  $("#repBtn").textContent = have ? "Rewrite report" : "Write report";
   $("#repBtn").disabled = !state.sample || !state.canWrite;
   $("#repList").innerHTML = state.reports.length ? state.reports.map((r, i) => `<details class="rep" ${i===0?"open":""}>
       <summary><b>Week of ${esc(r.range || r.week)}</b><span class="rep-stats">
@@ -1485,7 +1491,7 @@ function renderReports(){
         <div class="formbar"><button type="button" data-copy="${esc(r.week)}">Copy report</button>
         <span>Written ${new Date(r.createdAt).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}${r.by === "scheduled" ? " automatically" : ""}</span></div></div>
     </details>`).join("")
-    : `<div class="empty-state">No reports yet. Every Friday afternoon a report of what you completed is written here automatically, or press the button to write one now.</div>`;
+    : `<div class="empty-state">No reports yet. One is written every Friday.</div>`;
 }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-copy]"); if (!b) return;
@@ -1509,8 +1515,12 @@ window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 { let start = location.hash.slice(1); if (!VIEWS.includes(start)) { try { start = localStorage.getItem("wd-view") || "tasks"; } catch { start = "tasks"; } } showView(start); }
 
 $("#threadBtn").onclick = () => { const open = $("#threadWrap").hidden; $("#threadWrap").hidden = !open; $("#threadBtn").setAttribute("aria-expanded", open);
-  $("#threadBtn").textContent = open ? "Hide conversation" : "Conversation"; if (open) { const th = $("#thread"); th.scrollTop = th.scrollHeight; } };
+  $("#threadBtn").textContent = open ? "Hide chat" : "Chat"; if (open) { const th = $("#thread"); th.scrollTop = th.scrollHeight; } };
 $("#whereToggle").onclick = () => { const b = $("#whereToggle"); b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") !== "true"); };
+
+document.addEventListener("click", e => { const k = e.target.closest("[data-gotab]"); if (!k) return;
+  state.tab = k.dataset.gotab; state.q = ""; $("#q").value = ""; state.openEdit = null; try { localStorage.setItem("wd-tab", state.tab); } catch {}
+  render(); $(".boardcard").scrollIntoView({ behavior: "smooth", block: "start" }); });
 
 /* ---------- today's plan (short, timed list) ---------- */
 function renderPlan(){
@@ -1520,14 +1530,12 @@ function renderPlan(){
   if (Array.isArray(p.blocks) && p.blocks.length) {
     const nowHM = pad(new Date().getHours()) + ":" + pad(new Date().getMinutes());
     let cur = -1; p.blocks.forEach((b, i) => { if (!old && String(b.time) <= nowHM) cur = i; });
-    el.innerHTML = (p.focus ? `<p class="focus">${esc(p.focus)}</p>` : "") +
+    el.innerHTML =
       `<ol>${p.blocks.map((b, i) => { const t = state.tasks.find(x => norm(x.title) === norm(b.task));
-        return `<li class="${i === cur ? "now" : ""}"><span class="pt">${esc(b.time)}</span><span>${t ? `<button data-open-task="${t.id}">${esc(b.task)}</button>` : `<b>${esc(b.task)}</b>`}${b.do ? `<small>${esc(b.do)}</small>` : ""}</span></li>`; }).join("")}</ol>` +
-      (p.getAhead ? `<p class="pf-line"><b>Get ahead:</b> ${esc(p.getAhead)}</p>` : "") +
-      (p.canWait ? `<p class="pf-line"><b>Can wait:</b> ${esc(p.canWait)}</p>` : "") +
-      (old ? `<p class="pf-line">This plan is from ${esc(p.date)}. Press "Plan my day" for today's.</p>` : "");
+        return `<li class="${i === cur ? "now" : ""}"><span class="pt">${esc(b.time)}</span><span>${t ? `<button data-open-task="${t.id}" title="${esc(b.do || "")}">${esc(b.task)}</button>` : `<b title="${esc(b.do || "")}">${esc(b.task)}</b>`}</span></li>`; }).join("")}</ol>` +
+      (old ? `<p class="pf-line">From ${esc(fmtD(p.date))}. Replan for today.</p>` : "");
   } else if (p.text) {
-    el.innerHTML = `<p class="pf-line">${esc(p.text.split("\n").filter(Boolean).slice(0, 6).join(" · "))}</p>` + (old ? `<p class="pf-line">From ${esc(p.date)}. Press "Plan my day" for a fresh one.</p>` : "");
+    el.innerHTML = `<p class="pf-line">${esc(p.text.split("\n").filter(Boolean).slice(0, 6).join(" · "))}</p>` + (old ? `<p class="pf-line">From ${esc(fmtD(p.date))}. Replan for today.</p>` : "");
   }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-open-task]"); if (!b) return;
@@ -1552,25 +1560,26 @@ claude.use("dictation").then(d => {
   d.onState(({ state: st, reason }) => {
     drawMic(st);
     if (st === "idle") { document.querySelectorAll(".partial").forEach(p => p.textContent = "");
-      if (reason === "not_granted" || reason === "unavailable") { dictOff = true; micMsg(reason === "not_granted" ? "The microphone is switched off for this page. Use the microphone on your keyboard instead, or turn it on in the page's Permissions." : "Speaking isn't available here. Use the microphone on your keyboard instead."); }
-      else if (reason === "upstream_error" || reason === "rate_limited") micMsg("The microphone stopped. Press it to try again."); }
+      if (reason === "not_granted" || reason === "unavailable") { dictOff = true; micMsg(reason === "not_granted" ? "Mic is off for this page. Use your keyboard's mic." : "Use your keyboard's mic here."); }
+      else if (reason === "upstream_error" || reason === "rate_limited") micMsg("Mic stopped. Tap to retry."); }
   });
 });
-function micMsg(text){ flash(micTarget === "dump" ? "#capMsg" : "#talkMsg", text, true); }
+function micMsg(text){ const sel = micTarget === "dump" ? "#capMsg" : "#talkMsg"; flash(sel, text);
+  clearTimeout(micMsg.t); micMsg.t = setTimeout(() => { if ($(sel).textContent === text) flash(sel, ""); }, 5000); }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-mic]"); if (!b) return; e.preventDefault();
   const target = b.dataset.mic, ta = document.getElementById(target);
   if (!dict || dictOff) {   // phone apps and some browsers: no page microphone, so hand over to the keyboard's
     micTarget = target; ta.focus();
-    return micMsg("On this device, tap the microphone on your keyboard to speak. On a computer, open this page in Chrome, Edge or the Claude desktop app to use this button.");
+    return micMsg("Use your keyboard's mic here.");
   }
   if (dict.active() && micTarget === target) { dict.stop().catch(() => {}); return; }
   if (dict.active()) dict.stop().catch(() => {});
   micTarget = target;
   dict.start().catch(err => {   // started straight from the click, nothing awaited first
-    if (err?.code === "not_granted" || err?.code === "unavailable") { dictOff = true; micMsg("Speaking isn't available here. Use the microphone on your keyboard instead."); ta.focus(); }
-    else if (err?.code === "dismissed") micMsg("Press the microphone again and allow it to start speaking.");
-    else if (err?.code !== "stopped") micMsg("The microphone didn't start. Press it to try again.");
+    if (err?.code === "not_granted" || err?.code === "unavailable") { dictOff = true; micMsg("Use your keyboard's mic here."); ta.focus(); }
+    else if (err?.code === "dismissed") micMsg("Tap the mic again and allow it.");
+    else if (err?.code !== "stopped") micMsg("Mic didn't start. Tap to retry.");
   });
 });
 
