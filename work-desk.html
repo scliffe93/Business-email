@@ -193,6 +193,16 @@ button.small{padding:5px 11px;font-size:.82rem}
 .hint-line b{color:var(--ink);font-weight:600}
 .topdate{margin-left:8px}
 
+/* email-style report */
+.rep-prefs{display:flex;gap:10px;flex-wrap:wrap}
+.rep-prefs label{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);font-weight:600}
+.rep-prefs input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--raised);width:120px}
+.mailbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mailbar span{font-size:.82rem;color:var(--muted)}
+.mailbar span b{color:var(--ink)}
+.mailsheet{background:#ffffff;border-radius:10px;padding:18px 14px;box-shadow:0 1px 4px rgba(20,33,61,.12);overflow-x:auto;color:#1b2430}
+.mail{max-width:640px}
+
 /* report stats table */
 .rep-table{border-collapse:collapse;font-size:.82rem;width:100%;max-width:520px}
 .rep-table th,.rep-table td{text-align:right;padding:4px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
@@ -528,6 +538,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
         <h2 id="repH">Weekly reports</h2>
         <button class="primary" id="repBtn">Write report</button>
       </div>
+      <div class="rep-prefs"><label>To <input id="repTo" autocomplete="off"></label><label>From <input id="repFrom" autocomplete="off"></label></div>
       <div class="nudge" id="repNudge" hidden>This week's report isn't written yet.</div>
       <span class="msg" id="repMsg" role="status"></span>
       <div id="repList"></div>
@@ -1415,61 +1426,141 @@ function projectStats(w, f){
 }
 const factLine = t => `- ${t.title}${tagsOf(t).length ? " [" + tagsOf(t).join(", ") + "]" : ""} | ${STATUS[t.status]?.label || t.status} | ${t.status === "done" ? 100 : (t.progress||0)}%${t.due ? " | due " + t.due : ""}${t.waitingOn ? " | waiting on " + t.waitingOn : ""}${(t.updates||[]).length ? " | updates: " + t.updates.slice(-4).map(u => u.text).join(" / ").slice(0, 400) : ""}`;
 
+// who the email goes to / is signed by (kept on the board, so the Friday run uses it too)
+state.repPrefs = { to: "Nat", from: "Sam" };
+function syncPrefsInputs(){ for (const k of ["to","from"]) { const el = $("#rep" + k[0].toUpperCase() + k.slice(1)); if (document.activeElement !== el) el.value = state.repPrefs[k] || ""; } }
+["repTo","repFrom"].forEach(id => $("#" + id).addEventListener("change", e => {
+  state.repPrefs = { ...state.repPrefs, [id === "repTo" ? "to" : "from"]: e.target.value.trim() };
+  state.db?.doc("meta/reportPrefs").set(state.repPrefs).catch(() => {});
+}));
+
+// Mon/Tue: the report is about the week just gone; Wed onwards: this week
+function repWeek(){ const d = new Date(); if (d.getDay() === 1 || d.getDay() === 2) d.setDate(d.getDate() - 7); return weekInfo(d); }
+const weekLabel = w => { const fri = new Date(w.start.getTime() + 4*DAY); return `${w.start.getDate()}–${fri.getDate()} ${fri.toLocaleDateString("en-GB",{month:"short"})}`; };
 $("#repBtn").onclick = async () => {
-  if (!state.tasks.length) return flash("#repMsg", "There's nothing on your board yet, so there's nothing to report.", true);
-  const w = weekInfo(), f = weekFacts(w);
-  $("#repBtn").disabled = true; flash("#repMsg", "Claude is writing your report…");
-  const range = `${w.start.toLocaleDateString(undefined,{day:"numeric",month:"short"})} to ${new Date(w.end.getTime()-DAY).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}`;
+  if (!state.tasks.length) return flash("#repMsg", "Nothing on the board yet.", true);
+  const w = repWeek(), f = weekFacts(w);
+  $("#repBtn").disabled = true; flash("#repMsg", "Writing…");
+  const fri = new Date(w.start.getTime() + 4*DAY);
+  const range = `${w.start.getDate()} to ${fri.getDate()} ${fri.toLocaleDateString("en-GB",{month:"long",year:"numeric"})}`;
+  // next week, day by day (worked out here so the dates are exact)
+  const nwDays = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(w.end.getTime() + i*DAY), ds = iso(d), ts = f.open.filter(t => t.due === ds);
+    if (ts.length) nwDays.push(`${d.toLocaleDateString("en-GB",{weekday:"short"})} ${d.getDate()}:\n` + ts.map(preciseLine).join("\n")); }
+  const waiting = f.open.filter(t => t.status === "waiting" || t.status === "stuck" || t.waitingOn);
+  const atRisk = f.open.filter(t => t.status === "stuck" || (t.due && daysFrom(t.due) < 0) || (t.due && daysFrom(t.due) <= 7 && (t.progress||0) < 50 && (t.status === "waiting" || t.status === "stuck")));
+  const inProg = f.open.filter(t => (t.progress||0) > 0 && !t.parentId).sort((a,b) => (b.progress||0) - (a.progress||0));
   try {
-    const waiting = f.open.filter(t => t.status === "waiting" || t.status === "stuck" || t.waitingOn);
-    const { text } = await state.sample(
-`Write a precise end-of-week work report for ${range}. Today is ${fmtD(new Date())}.
-Plain text only. No markdown symbols, except "- " at the start of each list line.
+    const email = await state.sample.json(
+`Write ${state.repPrefs.from || "the person"}'s weekly update email to ${state.repPrefs.to || "their manager"} for the week of ${range}. Today is ${fmtD(new Date())}.
+Reply with ONLY this JSON:
+{"intro": "1-2 sentences: how the week went, with the exact counts (${f.done.length} tasks closed, ${f.overdue.length} overdue) and the main things finished",
+ "keyPoints": [{"lead": "short bold lead, max 6 words", "text": "one sentence"}],
+ "risks": [{"project": "project name", "title": "task name", "text": "one sentence: % done, due date, who it is waiting on and since when"}],
+ "completed": [{"project": "project name", "items": ["short past-tense outcome"]}],
+ "inProgress": [{"title": "task name", "pct": number, "note": "max 8 words or empty"}],
+ "nextWeek": [{"day": "Mon 23", "text": "short sentences, one per task", "key": "the hard deadline that day, or empty"}]}
+Rules:
+- keyPoints: exactly 3, things ${state.repPrefs.to || "the reader"} needs to know: the biggest risk, anything coming to them for sign-off or action, the next hard deadline.
+- risks: only stuck, overdue or at-risk work from AT RISK below. Empty list if none.
+- completed: group by project (projects in [brackets]). Merge steps of the same piece of work and closely related tasks into one readable line. Cover every completed task, but don't list them one by one if they can be combined.
+- inProgress: up to 8 from IN PROGRESS, most advanced first.
+- nextWeek: use exactly the days given in NEXT WEEK, one entry per day.
+- Use only the facts below: exact dates like "Fri 27 Nov", exact percentages and names. Never "several", "some", "various". Plain words, no jargon, no filler.
 
-Precision rules:
-- Use only the facts below. Never guess, round up or add anything.
-- Copy task names exactly. Start every list line with the project in brackets, e.g. "- [FWCC27] Send registration forms: 10%, due Fri 13 Nov (4 days overdue)".
-- Never write "several", "some", "a number of", "various", "a few" or "many". Give the exact count or list the items.
-- Give exact dates in the form "Mon 16 Nov", exact percentages and the names of people.
-- One task per line. No filler sentences.
-- Steps are shown as "(step of: Main task)". List a completed step under Completed with its main task, e.g. "- [FWCC27] Speak to Karthic (step of: Catering Rosterfy setup): completed Tue 17 Nov".
-
-Sections, each heading on its own line followed by its count in brackets, in this order:
-Summary: exactly 2 sentences. Sentence 1 gives the counts: ${f.done.length} completed, ${f.dropped.length} dropped, ${f.open.length} still open, ${f.overdue.length} overdue. Sentence 2 names the single biggest risk and its due date.
-Completed (${f.done.length}): every completed task with the day it was completed and, if the updates say, what was delivered.
-Moved forward (${f.moved.length}): each open task updated this week, with % done, the latest update and what is left.
-Waiting on others (${waiting.length}): "- [Project] Task: waiting on NAME since DATE, for WHAT".
-Overdue (${f.overdue.length}): each with its due date and days overdue.
-Next week (${f.nextWeek.length}): each task due next week with its due date, then one line "Start with: " naming the first 3 tasks to do.
-Dropped (${f.dropped.length}): only if any.
-Leave out any section with 0 items, except Summary and Completed.
-
-COMPLETED THIS WEEK:
+COMPLETED THIS WEEK (${f.done.length}):
 ${f.done.map(preciseLine).join("\n") || "(none)"}
 
-DROPPED THIS WEEK:
-${f.dropped.map(preciseLine).join("\n") || "(none)"}
-
-OPEN TASKS UPDATED THIS WEEK:
-${f.moved.map(preciseLine).join("\n") || "(none)"}
+AT RISK:
+${atRisk.map(preciseLine).join("\n") || "(none)"}
 
 WAITING ON OTHERS:
 ${waiting.map(preciseLine).join("\n") || "(none)"}
 
-OVERDUE:
-${f.overdue.map(preciseLine).join("\n") || "(none)"}
+IN PROGRESS:
+${inProg.slice(0, 15).map(preciseLine).join("\n") || "(none)"}
 
-DUE NEXT WEEK:
-${f.nextWeek.map(preciseLine).join("\n") || "(none)"}
+NEXT WEEK:
+${nwDays.join("\n\n") || "(nothing due)"}
 
-ALL OTHER OPEN TASKS:
-${f.open.filter(t => !f.moved.includes(t) && !f.overdue.includes(t) && !f.nextWeek.includes(t)).map(preciseLine).join("\n") || "(none)"}`, { cache: false });
-    await state.db.doc("reports/" + w.id).set({ week: w.id, range, text, createdAt: new Date().toISOString(), by: "page",
-      stats: { completed: f.done.length, dropped: f.dropped.length, open: f.open.length, overdue: f.overdue.length, byProject: projectStats(w, f) } });
+DROPPED THIS WEEK:
+${f.dropped.map(preciseLine).join("\n") || "(none)"}`, { cache: false });
+    if (!email || typeof email !== "object") throw { code: "bad" };
+    const nextWeekCount = f.open.filter(t => { const d = parseDay(t.due); return d && d >= w.end && d < new Date(w.end.getTime() + 7*DAY); }).length;
+    const doc = { week: w.id, range, createdAt: new Date().toISOString(), by: "page", to: state.repPrefs.to || "", from: state.repPrefs.from || "",
+      subject: `Weekly update: w/c ${w.start.getDate()} ${w.start.toLocaleDateString("en-GB",{month:"short"})}`,
+      email: cleanEmail(email), dropped: f.dropped.map(t => ({ title: t.title, project: tagsOf(t)[0] || "" })), nextWeekCount,
+      stats: { completed: f.done.length, dropped: f.dropped.length, open: f.open.length, overdue: f.overdue.length, byProject: projectStats(w, f) } };
+    doc.text = emailText(doc);
+    await state.db.doc("reports/" + w.id).set(doc);
     flash("#repMsg", "Report saved.");
   } catch(e){ flash("#repMsg", sampleErr(e) || "Couldn't write the report. Try again.", true); }
   finally { $("#repBtn").disabled = false; }
 };
+function cleanEmail(e){
+  const str = (v, n) => String(v ?? "").slice(0, n);
+  const arr = v => Array.isArray(v) ? v : [];
+  return { intro: str(e.intro, 600),
+    keyPoints: arr(e.keyPoints).slice(0, 4).map(k => ({ lead: str(k.lead, 80), text: str(k.text, 300) })),
+    risks: arr(e.risks).slice(0, 8).map(r => ({ project: str(r.project, 40), title: str(r.title, 160), text: str(r.text, 300) })),
+    completed: arr(e.completed).slice(0, 10).map(c => ({ project: str(c.project, 40), items: arr(c.items).slice(0, 15).map(x => str(x, 240)) })),
+    inProgress: arr(e.inProgress).slice(0, 8).map(x => ({ title: str(x.title, 160), pct: Math.max(0, Math.min(100, Number(x.pct) || 0)), note: str(x.note, 120) })),
+    nextWeek: arr(e.nextWeek).slice(0, 7).map(d => ({ day: str(d.day, 12), text: str(d.text, 500), key: str(d.key, 160) })) };
+}
+// plain-text version (search, older reports, plain-text paste)
+function emailText(r){
+  const e = r.email, L = [];
+  L.push(`Hi ${r.to || ""},`, "", e.intro, "");
+  e.keyPoints.forEach((k, i) => L.push(`${i + 1}. ${k.lead}. ${k.text}`));
+  L.push("", "RISKS AND BLOCKERS"); e.risks.forEach(x => L.push(`- [${x.project}] ${x.title}. ${x.text}`)); if (!e.risks.length) L.push("- None");
+  L.push("", `COMPLETED THIS WEEK (${r.stats.completed})`); e.completed.forEach(c => { L.push(c.project); c.items.forEach(x => L.push("- " + x)); });
+  L.push("", "IN PROGRESS"); e.inProgress.forEach(x => L.push(`- ${x.title}: ${x.pct}%${x.note ? ", " + x.note : ""}`));
+  L.push("", `NEXT WEEK (${r.nextWeekCount || 0} tasks due)`); e.nextWeek.forEach(d => L.push(`${d.day}: ${d.key ? d.key + ". " : ""}${d.text}`));
+  if (r.dropped?.length) L.push("", "Dropped: " + r.dropped.map(d => d.title + (d.project ? ` (${d.project})` : "")).join("; "));
+  L.push("", "Thanks,", r.from || "");
+  return L.join("\n");
+}
+
+// ---- the email itself: tables + inline styles so it keeps its look when pasted into Outlook or Gmail
+const EM = { ink: "#1b2430", navy: "#14213d", gold: "#ffb703", line: "#d5dbe5" };
+const EM_PROJ = ["#1a4f9c", "#7a3db8", "#b85c00", "#0b7285", "#a31551", "#3d6b00", "#5b4bb7", "#8a5a00"];
+const eesc = s => esc(s).replace(/'/g, "&#39;");
+function emailHTML(r){
+  const e = r.email, st = r.stats || {};
+  const F = "font-family:Arial,Helvetica,sans-serif;";
+  const tile = (n, label, bg, fg) => `<td width="25%" align="center" bgcolor="${bg}" style="background-color:${bg};padding:10px 4px;border-right:4px solid #ffffff;"><p style="margin:0;font-size:24px;font-weight:bold;color:${fg};">${n}</p><p style="margin:2px 0 0 0;font-size:11px;color:${fg};font-weight:bold;">${label}</p></td>`;
+  const band = (title, bg) => `<tr><td bgcolor="${bg}" style="background-color:${bg};padding:7px 12px;font-size:13px;font-weight:bold;color:#ffffff;letter-spacing:.5px;">${title}</td></tr>`;
+  const box = (inner, bg, edge) => `<tr><td bgcolor="${bg}" style="background-color:${bg};padding:10px 12px;border-left:4px solid ${edge};font-size:14px;line-height:1.5;color:${EM.ink};">${inner}</td></tr>`;
+  const section = (rows) => `<tr><td style="padding:14px 12px 0 12px;background-color:#ffffff;" bgcolor="#ffffff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table></td></tr>`;
+  const projColor = name => { const i = allTags().findIndex(g => norm(g) === norm(name)); return EM_PROJ[(i < 0 ? 3 : i) % EM_PROJ.length]; };
+  const fri = r.range || "";
+  let h = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;${F}color:${EM.ink};"><tr><td style="font-size:15px;line-height:1.55;color:${EM.ink};padding:0 0 6px 0;">
+<p style="margin:0 0 12px 0;">Hi ${eesc(r.to || "")},</p>
+<p style="margin:0 0 12px 0;">${eesc(e.intro)}</p>
+${e.keyPoints.length ? `<p style="margin:0 0 8px 0;">${e.keyPoints.length === 1 ? "One thing" : ["","One thing","Two things","Three things","Four things"][e.keyPoints.length]} I'd like you to know about:</p>
+<ol style="margin:0 0 12px 0;padding-left:22px;">${e.keyPoints.map((k, i) => `<li style="margin:0 0 ${i === e.keyPoints.length - 1 ? 0 : 6}px 0;"><strong>${eesc(k.lead)}.</strong> ${eesc(k.text)}</li>`).join("")}</ol>` : ""}
+<p style="margin:0 0 12px 0;">The full report is below.</p>
+<p style="margin:0 0 4px 0;">Thanks,</p>
+<p style="margin:0 0 18px 0;">${eesc(r.from || "")}</p>
+</td></tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;${F}border:1px solid ${EM.line};">
+<tr><td bgcolor="${EM.navy}" style="background-color:${EM.navy};padding:16px 18px;">
+<p style="margin:0 0 4px 0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:${EM.gold};font-weight:bold;">Weekly report</p>
+<p style="margin:0;font-size:20px;line-height:1.25;color:#ffffff;font-weight:bold;">Week of ${eesc(fri)}</p></td></tr>
+<tr><td style="padding:14px 12px 6px 12px;background-color:#ffffff;" bgcolor="#ffffff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+${tile(st.completed ?? 0, "Completed", "#e3f6ea", "#14713d")}${tile(st.open ?? 0, "Still open", "#e2edfb", "#1a4f9c")}${st.overdue ? tile(st.overdue, "Overdue", "#fdecea", "#a31515") : tile(0, "Overdue", "#e3f6ea", "#14713d")}${tile(st.dropped ?? 0, "Dropped", "#eef0f3", "#4a5568").replace("border-right:4px solid #ffffff;", "")}
+</tr></table></td></tr>`;
+  if (e.risks.length) h += section(band("RISKS AND BLOCKERS", "#c62828") + box(e.risks.map((x, i) => `<p style="margin:0 0 ${i === e.risks.length - 1 ? 0 : 8}px 0;"><strong style="color:#a31515;">${eesc(x.project ? x.project + " " : "")}${eesc(x.title)}.</strong> ${eesc(x.text)}</p>`).join(""), "#fdecea", "#c62828"));
+  if (e.completed.length) h += section(band("COMPLETED THIS WEEK", "#14713d") + box(e.completed.map((c, i) => `<p style="margin:0 0 4px 0;font-weight:bold;color:${projColor(c.project)};">${eesc(c.project || "Other")}</p><ul style="margin:0 0 ${i === e.completed.length - 1 ? 0 : 10}px 0;padding-left:20px;">${c.items.map(x => `<li>${eesc(x)}</li>`).join("")}</ul>`).join(""), "#f4fbf6", "#14713d"));
+  if (e.inProgress.length) h += section(band("IN PROGRESS", "#b86e00") + box(`<ul style="margin:0;padding-left:20px;">${e.inProgress.map(x => `<li><strong>${eesc(x.title)}:</strong> ${x.pct}%${x.note ? ", " + eesc(x.note) : ""}</li>`).join("")}</ul>`, "#fff6e5", "#b86e00"));
+  if (e.nextWeek.length) h += section(`<tr><td colspan="2" bgcolor="#1a4f9c" style="background-color:#1a4f9c;padding:7px 12px;font-size:13px;font-weight:bold;color:#ffffff;letter-spacing:.5px;">NEXT WEEK${r.nextWeekCount ? ` (${r.nextWeekCount} tasks due)` : ""}</td></tr>` +
+    e.nextWeek.map((d, i) => { const hot = !!d.key, last = i === e.nextWeek.length - 1, bl = last ? "" : "border-bottom:1px solid #ffffff;";
+      return `<tr><td width="74" valign="top" bgcolor="${hot ? "#ffe3a3" : "#e2edfb"}" style="background-color:${hot ? "#ffe3a3" : "#e2edfb"};padding:8px 8px 8px 12px;font-size:13px;font-weight:bold;color:${hot ? "#7a4a00" : "#1a4f9c"};${bl}">${eesc(d.day)}</td><td valign="top" bgcolor="${hot ? "#fff6e5" : "#f5f9fe"}" style="background-color:${hot ? "#fff6e5" : "#f5f9fe"};padding:8px 12px;font-size:14px;line-height:1.45;color:${EM.ink};${bl}">${hot ? `<strong>${eesc(d.key)}.</strong> ` : ""}${eesc(d.text)}</td></tr>`; }).join(""));
+  h += r.dropped?.length
+    ? `<tr><td style="padding:14px 12px 14px 12px;background-color:#ffffff;" bgcolor="#ffffff"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#eef0f3" style="background-color:#eef0f3;padding:9px 12px;border-left:4px solid #6b7686;font-size:13px;line-height:1.5;color:#3c4654;"><strong>Dropped:</strong> ${r.dropped.map(d => eesc(d.title) + (d.project ? ` (${eesc(d.project)})` : "")).join("; ")}.</td></tr></table></td></tr>`
+    : `<tr><td style="padding:0 0 14px 0;background-color:#ffffff;" bgcolor="#ffffff"></td></tr>`;
+  return h + `</table>`;
+}
 
 function repTable(bp){
   if (!bp || !Object.keys(bp).length) return "";
@@ -1478,27 +1569,54 @@ function repTable(bp){
     rows.map(([g, v]) => `<tr><td>${g === "No project" ? esc(g) : tagChip(g)}</td><td>${v.completed}</td><td>${v.dropped}</td><td>${v.open}</td><td>${v.overdue ? `<span style="color:var(--hot);font-weight:700">${v.overdue}</span>` : 0}</td></tr>`).join("")}</tbody></table></div>`;
 }
 function renderReports(){
-  const w = weekInfo(), day = new Date().getDay(), have = state.reports.some(r => r.week === w.id);
-  $("#repNudge").hidden = have || !(day === 5 || day === 6 || day === 0) || !state.tasks.length;
-  $("#repBtn").textContent = have ? "Rewrite report" : "Write report";
+  syncPrefsInputs();
+  const w = repWeek(), day = new Date().getDay(), have = state.reports.some(r => r.week === w.id);
+  $("#repNudge").hidden = have || ![5, 6, 0, 1, 2].includes(day) || !state.tasks.length;
+  $("#repNudge").textContent = `Report for ${weekLabel(w)} isn't written yet.`;
+  $("#repBtn").textContent = `${have ? "Rewrite" : "Write"} report (${weekLabel(w)})`;
   $("#repBtn").disabled = !state.sample || !state.canWrite;
   $("#repList").innerHTML = state.reports.length ? state.reports.map((r, i) => `<details class="rep" ${i===0?"open":""}>
       <summary><b>Week of ${esc(r.range || r.week)}</b><span class="rep-stats">
         <span class="chip" style="color:var(--ok)">${r.stats?.completed ?? 0} completed</span>
         <span class="chip">${r.stats?.open ?? 0} still open</span>
         ${r.stats?.overdue ? `<span class="chip hot">${r.stats.overdue} overdue</span>` : ""}</span></summary>
-      <div class="rep-body">${repTable(r.stats?.byProject)}<pre id="rep-${esc(r.week)}">${esc(r.text)}</pre>
-        <div class="formbar"><button type="button" data-copy="${esc(r.week)}">Copy report</button>
-        <span>Written ${new Date(r.createdAt).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}${r.by === "scheduled" ? " automatically" : ""}</span></div></div>
+      <div class="rep-body">
+        ${r.email ? `<div class="formbar mailbar">
+            <button type="button" class="primary" data-copy="${esc(r.week)}">Copy email</button>
+            <button type="button" data-copysub="${esc(r.week)}">Copy subject</button>
+            <span>Subject: <b>${esc(r.subject || "")}</b></span></div>
+          <div class="mailsheet"><div id="rep-${esc(r.week)}" class="mail">${emailHTML(r)}</div></div>`
+        : `${repTable(r.stats?.byProject)}<pre id="rep-${esc(r.week)}">${esc(r.text)}</pre>
+          <div class="formbar"><button type="button" data-copy="${esc(r.week)}">Copy report</button></div>`}
+        <div class="formbar"><span>Written ${new Date(r.createdAt).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}${r.by === "scheduled" ? " automatically" : ""}</span></div></div>
     </details>`).join("")
     : `<div class="empty-state">No reports yet. One is written every Friday.</div>`;
 }
+// copy the email WITH its colours (rich text), falling back to selecting it
+function copyRich(node, plain){
+  const sel = getSelection(), range = document.createRange();
+  range.selectNodeContents(node); sel.removeAllRanges(); sel.addRange(range);
+  let ok = false; try { ok = document.execCommand("copy"); } catch {}
+  if (ok) { sel.removeAllRanges(); return Promise.resolve(true); }
+  try {
+    if (navigator.clipboard && window.ClipboardItem)
+      return navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([node.innerHTML], { type: "text/html" }), "text/plain": new Blob([plain], { type: "text/plain" }) })]).then(() => { sel.removeAllRanges(); return true; }, () => false);
+  } catch {}
+  return Promise.resolve(false);   // left selected: the viewer can copy it themselves
+}
 document.addEventListener("click", async e => {
+  const sb = e.target.closest("[data-copysub]");
+  if (sb) { const r = state.reports.find(x => x.week === sb.dataset.copysub);
+    try { await navigator.clipboard.writeText(r?.subject || ""); sb.textContent = "Copied"; } catch { sb.textContent = r?.subject || ""; }
+    return setTimeout(() => sb.textContent = "Copy subject", 2500); }
   const b = e.target.closest("[data-copy]"); if (!b) return;
-  const pre = document.getElementById("rep-" + b.dataset.copy);
-  try { await navigator.clipboard.writeText(pre.textContent); b.textContent = "Copied"; }
-  catch { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent = "Selected: press Ctrl+C or Cmd+C"; }
-  setTimeout(() => b.textContent = "Copy report", 2500);
+  const r = state.reports.find(x => x.week === b.dataset.copy), node = document.getElementById("rep-" + b.dataset.copy);
+  if (!node) return;
+  const label = r?.email ? "Copy email" : "Copy report";
+  const ok = r?.email ? await copyRich(node, r.text || node.innerText)
+    : await navigator.clipboard.writeText(node.textContent).then(() => true, () => { copyRich(node, node.textContent); return false; });
+  b.textContent = ok ? "Copied. Paste into an email" : "Selected. Press copy";
+  setTimeout(() => b.textContent = label, 3000);
 });
 
 /* ---------- sections (Add / Tasks / Reports) ---------- */
@@ -1598,6 +1716,7 @@ render(); renderTalk(); renderReports();
     render(); renderReports();
   }, err => { clearTimeout(timer); $("#conn").textContent = "Lost connection to your tasks. Reload the page to reconnect."; });
   db.doc("meta/plan").onSnapshot(s => { state.plan = s.exists ? s.data() : null; render(); }, () => {});
+  db.doc("meta/reportPrefs").onSnapshot(d => { if (d.exists) { state.repPrefs = { ...state.repPrefs, ...d.data() }; syncPrefsInputs(); } }, () => {});
   db.collection("reports").orderBy("week", "desc").limit(26).onSnapshot(snap => { state.reports = snap.docs.map(d => d.data()); renderReports(); }, () => {});
   db.doc("meta/status").onSnapshot(s => { state.status = s.exists ? s.data() : null; renderTalk(state.pendingTalk); }, () => {});
   db.collection("chat").orderBy("at", "desc").limit(80).onSnapshot(snap => {
