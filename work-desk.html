@@ -404,6 +404,18 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
 .morestep:hover{color:var(--accent);background:var(--raised)}
 .morestep:focus-visible{outline:2px solid var(--accent)}
 
+/* chase + people + repeat */
+.rchip{font-size:.68rem;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 7px;white-space:nowrap}
+.waitlong{color:var(--hot)!important;font-weight:600}
+.chasebtn{flex:none;align-self:center;font-size:.75rem;padding:3px 9px;border-radius:999px;margin-left:auto;white-space:nowrap}
+.chasebox{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:10px 12px}
+.chasebox textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--raised);line-height:1.45;resize:vertical}
+.pgroup{border-top:1px solid var(--line);padding-top:6px}
+.pgroup:first-of-type{border-top:none}
+.phead{display:flex;align-items:center;gap:8px;font-size:1rem;margin:8px 0 2px}
+.phead .count{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);background:var(--raised);border-radius:999px;padding:0 8px}
+.pgroup .item{border-top:1px dashed var(--line)}
+
 /* detail drawer */
 .detail{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;padding:6px 6px 18px 36px}
 .updates{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -667,6 +679,36 @@ document.addEventListener("change", e => {
   patch(t.id, { due: el.value }).then(() => flash("#boardMsg", `"${t.title}" is now ${fmtDue(el.value).replace(/^Due /, "due ")}.`));
 });
 
+async function draftChase(t){
+  state.busy.add("c" + t.id); render();
+  try {
+    const ups = (t.updates || []).slice(-4).map(u => `${fmtD(u.at)}: ${u.text}`).join("\n") || "(none)";
+    const { text } = await state.sample(
+`Write a short, friendly chase message from ${state.repPrefs?.from || "me"} to ${t.waitingOn} about this work task. Plain text, 2-4 sentences, ready to paste into an email or Teams. Start with "Hi ${t.waitingOn.split(" ")[0]},". Say exactly what is needed and by when. No subject line, no sign-off name, no apologies, no "just checking in".
+Task: ${t.title}
+${t.due ? "Due: " + fmtD(t.due) : ""}
+Waiting since: ${fmtD(new Date(lastTouch(t)).toISOString())} (${daysWaiting(t)} days)
+Latest updates:
+${ups}
+${t.notes ? "Notes: " + t.notes : ""}`, { modelTier: "quick", cache: false });
+    await patch(t.id, { chase: { text: text.trim(), at: new Date().toISOString() } });
+    state.openEdit = t.id;
+  } catch(e){ flash("#boardMsg", sampleErr(e) || "Couldn't draft the chase. Try again.", true); }
+  finally { state.busy.delete("c" + t.id); render(); }
+}
+document.addEventListener("click", async e => {
+  const c = e.target.closest("[data-chase]");
+  if (c) { const t = byId(c.dataset.chase); if (t) draftChase(t); return; }
+  const cp = e.target.closest("[data-copychase]");
+  if (cp) { const ta = document.getElementById("chase-" + cp.dataset.copychase);
+    try { await navigator.clipboard.writeText(ta.value); cp.textContent = "Copied"; } catch { ta.select(); cp.textContent = "Selected"; }
+    return setTimeout(() => cp.textContent = "Copy", 2500); }
+  const ch = e.target.closest("[data-chased]");
+  if (ch) { const t = byId(ch.dataset.chased); if (!t) return;
+    await postUpdate(t, `Chased ${t.waitingOn}`); await patch(t.id, { chase: { text: "", at: "" } });
+    flash("#boardMsg", `Chased ${t.waitingOn}. The 3-day clock restarts.`); }
+});
+
 /* ---------- search ---------- */
 state.q = "";
 const searchText = t => norm([t.title, ...tagsOf(t), t.notes, t.nextStep, t.waitingOn, STATUS[t.status]?.label, ...(t.updates||[]).map(u => u.text)].join(" "));
@@ -696,12 +738,27 @@ const STATUS = {
   done:    { label: "Done",               cls: "st-done" },
   dropped: { label: "Not needed",         cls: "st-drop" },
 };
+// waiting on someone with no update for 3+ days
+const lastTouch = t => { const lu = lastUpdate(t); return Date.parse(lu?.at || t.createdAt || 0) || 0; };
+const daysWaiting = t => Math.floor((Date.now() - lastTouch(t)) / DAY);
+const needsChase = t => isOpen(t) && !!(t.waitingOn || "").trim() && daysWaiting(t) >= 3;
+const REPEATS = { daily: "Daily", weekdays: "Weekdays", weekly: "Weekly", monthly: "Monthly" };
+function nextDue(from, rpt){
+  const d = parseDay(from) || today(), t0 = today();
+  const step = () => { if (rpt === "daily") d.setDate(d.getDate() + 1);
+    else if (rpt === "weekdays") { do d.setDate(d.getDate() + 1); while (d.getDay() === 0 || d.getDay() === 6); }
+    else if (rpt === "weekly") d.setDate(d.getDate() + 7); else d.setMonth(d.getMonth() + 1); };
+  do step(); while (d <= t0);
+  return iso(d);
+}
 const TABS = [
   ["overdue", "Overdue",     t => isOpen(t) && t.due && daysFrom(t.due) < 0],
   ["today",   "Today",       t => isOpen(t) && t.due && daysFrom(t.due) === 0],
   ["week",    "This week",   t => isOpen(t) && t.due && daysFrom(t.due) >= 0 && daysFrom(t.due) <= 7],
   ["doing",   "In progress", t => t.status === "doing" || t.status === "review"],
   ["waiting", "Waiting / stuck", t => t.status === "waiting" || t.status === "stuck"],
+  ["chase",   "Chase",       needsChase],
+  ["people",  "People",      t => isOpen(t) && !!(t.waitingOn || "").trim()],
   ["nodate",  "No date",     t => isOpen(t) && !t.due],
   ["all",     "All open",    isOpen],
   ["closed",  "Done",        t => !isOpen(t)],
@@ -729,7 +786,15 @@ async function syncParent(parentId, changed){
   else if (!allClosed && p.status === "done") await patch(p.id, { ...statusPatch(p, "doing"), progress: prog });
   else if (isOpen(p) && (p.progress||0) !== prog) { const pp = { progress: prog }; if (p.status === "todo" && doneN) pp.status = "doing"; await patch(p.id, pp); }
 }
-async function setStatus(t, s){ await patch(t.id, statusPatch(t, s)); if (t.parentId) await syncParent(t.parentId, { id: t.id, status: s }); }
+async function setStatus(t, s){
+  await patch(t.id, statusPatch(t, s));
+  if (t.parentId) await syncParent(t.parentId, { id: t.id, status: s });
+  if (s === "done" && isOpen(t) && REPEATS[t.repeat] && !t.parentId) {   // repeating: queue the next one
+    const due = nextDue(t.due, t.repeat);
+    await col().add(newTask({ title: t.title, tags: tagsOf(t), priority: t.priority, estimate: t.estimate, nextStep: t.nextStep, notes: t.notes, repeat: t.repeat, due }));
+    flash("#boardMsg", `Next "${t.title}" added for ${fmtD(due)}.`);
+  }
+}
 async function addStep(parentId, title, extra = {}){
   const p = byId(parentId); if (!p) return { dup: true };
   const r = await addTask({ ...extra, title, tags: extra.tags?.length ? extra.tags : tagsOf(p), parentId, order: nextOrder(parentId) });
@@ -805,6 +870,14 @@ function render(){
     : list.sort((a,b) => (a.due||"9999").localeCompare(b.due||"9999") || prio(b)-prio(a));
   let rowsHTML;
   if (q || state.tab === "closed") rowsHTML = list.map(t => rowHTML(t, { flat: true })).join("");
+  else if (state.tab === "chase") rowsHTML = list.sort((a,b) => daysWaiting(b) - daysWaiting(a)).map(t => rowHTML(t, { flat: true, chase: true })).join("");
+  else if (state.tab === "people") {
+    const by = new Map();
+    for (const t of list) { const k = norm(t.waitingOn); if (!by.has(k)) by.set(k, { name: t.waitingOn.trim(), ts: [] }); by.get(k).ts.push(t); }
+    rowsHTML = [...by.values()].sort((a,b) => b.ts.length - a.ts.length).map(g => `<div class="pgroup">
+      <h3 class="phead"><span class="av" aria-hidden="true">${esc(g.name[0] || "?").toUpperCase()}</span>${esc(g.name)}<span class="count">${g.ts.length}</span></h3>
+      ${g.ts.map(t => rowHTML(t, { flat: true, chase: needsChase(t) })).join("")}</div>`).join("");
+  }
   else {   // a step that matches brings its whole piece of work, in order
     const tops = [], seen = new Set(), todayStr = iso(new Date());
     // in Today, a piece of work stays on screen for the rest of the day after you tick one of its steps
@@ -815,7 +888,7 @@ function render(){
   }
   const emptyCopy = { overdue: "Nothing overdue.", today: "Nothing due today.", week: "Nothing due in the next 7 days.", doing: "Nothing in progress. Set a task to \"Working on it\" when you start it.",
     waiting: "Nothing is waiting on anyone.", all: "No open tasks.", closed: "Nothing finished yet.",
-    nodate: "Every open task has a date." }[state.tab];
+    nodate: "Every open task has a date.", chase: "Nobody needs chasing.", people: "Nothing is with anyone else." }[state.tab];
   const keep = {}, focusId = document.activeElement?.id, openDetail = document.querySelector("#board .detail");
   if (openDetail && openDetail.dataset.id === state.openEdit)   // same task still open: keep what's being typed
     openDetail.querySelectorAll("[id]").forEach(el => { if ("value" in el && el.type !== "range") keep[el.id] = el.value; });
@@ -852,11 +925,14 @@ function rowHTML(t, o = {}){
       <button class="r-title" data-act="open" data-id="${t.id}" aria-expanded="${state.openEdit===t.id}">
         <span class="t-title"><span class="pri ${open?t.priority:"low"}" aria-hidden="true"></span><span>${hl(t.title)}</span>
           ${steps.length ? `<span class="scount">${sDone}/${steps.length} steps</span>` : ""}
+          ${t.repeat && REPEATS[t.repeat] ? `<span class="rchip" title="Repeats">↻ ${REPEATS[t.repeat]}</span>` : ""}
           ${t.updates?.length ? `<span class="ucount" title="Updates">${t.updates.length}</span>` : ""}</span>
         ${tagsOf(t).length ? `<span class="tagrow">${tagsOf(t).map(tagChip).join("")}</span>` : ""}
         ${par ? `<span class="r-sub partof">Step of: <b>${esc(par.title)}</b></span>` : ""}
+        ${o.chase ? `<span class="r-sub waitlong">Waiting on ${esc(t.waitingOn)} for ${daysWaiting(t)} days</span>` : ""}
         ${lu ? `<span class="r-sub">${hl(lu.text)} <i>· ${ago(lu.at)}</i></span>` : ""}
       </button>
+      ${o.chase && state.canWrite ? `<button type="button" class="chasebtn" data-chase="${t.id}" ${!state.sample || state.busy.has("c" + t.id) ? "disabled" : ""}>${state.busy.has("c" + t.id) ? "Drafting…" : t.chase?.text ? "Chase ✓" : "Draft chase"}</button>` : ""}
       </div>
       <label class="r-status"><span class="vh">Status</span>
         <select class="pill ${st.cls}" data-act="status" data-id="${t.id}" ${ro}>${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${k===t.status?"selected":""}>${v.label}</option>`).join("")}</select></label>
@@ -895,6 +971,9 @@ function detailHTML(t){
   const ups = (t.updates||[]).slice().reverse(), busy = state.busy.has(t.id), open = isOpen(t), pct = t.status === "done" ? 100 : (t.progress||0);
   return `<div class="detail" data-id="${t.id}">
     <section class="updates" aria-label="Updates">
+      ${t.chase?.text && isOpen(t) ? `<div class="chasebox"><div class="label">Chase message for ${esc(t.waitingOn || "")}</div>
+        <textarea id="chase-${t.id}" rows="4" aria-label="Chase message">${esc(t.chase.text)}</textarea>
+        <div class="upbar"><button type="button" class="primary" data-copychase="${t.id}">Copy</button><button type="button" data-chased="${t.id}">Mark as chased</button><button type="button" class="link" data-chase="${t.id}">Redraft</button></div></div>` : ""}
       ${linkBoxHTML(t)}
       <h3 class="label">Updates</h3>
       ${state.canWrite ? `<form class="upform" data-id="${t.id}">
@@ -916,6 +995,7 @@ function detailHTML(t){
       <label>Priority<select id="e-prio-${t.id}" name="priority">${["high","med","low"].map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${{high:"Urgent",med:"Normal",low:"Low"}[p]}</option>`).join("")}</select></label>
       <label>Waiting on / owner<input id="e-who-${t.id}" name="waitingOn" value="${esc(t.waitingOn)}" placeholder="Name"></label>
       <label>Time (minutes)<input id="e-est-${t.id}" type="number" min="0" step="5" name="estimate" value="${t.estimate||""}"></label>
+      ${t.parentId ? "" : `<label>Repeats<select id="e-rep-${t.id}" name="repeat"><option value="">No</option>${Object.entries(REPEATS).map(([k,v]) => `<option value="${k}" ${t.repeat===k?"selected":""}>${v}</option>`).join("")}</select></label>`}
       <div class="wide"><label for="tagin-${t.id}">Projects</label>
         <div class="tagedit">${tagsOf(t).map(g => `<span class="tag ${tagClass(g)}">${esc(g)}${state.canWrite ? `<button type="button" data-untag="${esc(g)}" data-id="${t.id}" aria-label="Remove ${esc(g)}">×</button>` : ""}</span>`).join("")}
           ${state.canWrite ? `<input id="tagin-${t.id}" list="taglist" data-tagin="${t.id}" placeholder="${tagsOf(t).length ? "Add…" : "Add project…"}" autocomplete="off">` : ""}</div>
@@ -936,7 +1016,7 @@ const col = () => state.db.collection("tasks");
 function newTask(p){
   return { title: String(p.title||"").slice(0,300), notes: String(p.notes||""), priority: ["high","med","low"].includes(p.priority)?p.priority:"med",
     due: /^\d{4}-\d{2}-\d{2}$/.test(p.due||"") ? p.due : "", estimate: Number(p.estimate)||0, nextStep: String(p.nextStep||""),
-    status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), tags: mergeTags(Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : [])), parentId: String(p.parentId || ""), order: Number(p.order) || 0, updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
+    status: "todo", progress: 0, waitingOn: String(p.waitingOn||""), tags: mergeTags(Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : [])), repeat: REPEATS[p.repeat] ? p.repeat : "", parentId: String(p.parentId || ""), order: Number(p.order) || 0, updates: [], prep: "", createdAt: new Date().toISOString(), closedAt: "" };
 }
 const norm = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const findDup = title => state.tasks.find(t => isOpen(t) && norm(t.title) === norm(title));
@@ -972,6 +1052,7 @@ const taskFormat = () => `Reply in JSON Lines: one complete JSON object per line
 Use the person's own words for things (for example "Uniforms", never "Team Wear"). Split combined items into separate tasks. Resolve words like "Thursday" or "end of week" to real dates. Mark something high if it is urgent, overdue, about money owed, or blocks other people.
 Projects already in use: ${allTags().join(", ") || "(none yet)"}. Reuse one of these whenever it fits; only make up a new short project name when the work clearly belongs to a different project.
 KEEP LINKED WORK TOGETHER. When several actions belong to ONE piece of work (same topic or same people, or one has to happen before another), return ONE item for the piece of work, named for the overall outcome, with "steps": [{"title", "due", "estimate", "nextStep"}] listed in the order they happen. Do not return those actions as separate items. Only things that really are unrelated become separate items.
+If they say something recurs (e.g. "every Monday", "daily", "each month"), add "repeat": "daily"|"weekdays"|"weekly"|"monthly" and set due to the next occurrence.
 If an item is a further step of an EXISTING open task in the list below, add "partOf": that task's exact title instead.
 Existing open main tasks:
 ${state.tasks.filter(t => isOpen(t) && !t.parentId).map(t => "- " + t.title).slice(0, 80).join("\n") || "(none)"}`;
@@ -999,7 +1080,7 @@ function cleanItem(o){
   const day = d => /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d : "";
   return { title: String(o.title).trim().slice(0, 300), tags: mergeTags(Array.isArray(o.tags) ? o.tags : o.tags ? [o.tags] : []),
     priority: ["high","med","low"].includes(o.priority) ? o.priority : "med", due: day(o.due), estimate: Number(o.estimate) || 0,
-    nextStep: String(o.nextStep || ""), notes: String(o.notes || ""), partOf: String(o.partOf || ""),
+    nextStep: String(o.nextStep || ""), notes: String(o.notes || ""), partOf: String(o.partOf || ""), repeat: REPEATS[o.repeat] ? o.repeat : "",
     steps: Array.isArray(o.steps) ? o.steps.filter(x => x && String(x.title || "").trim()).map(x => ({ title: String(x.title).trim().slice(0, 300), due: day(x.due), estimate: Number(x.estimate) || 0, nextStep: String(x.nextStep || "") })) : [],
     include: true };
 }
@@ -1021,6 +1102,7 @@ function rvCard(it, i){
       </div>
       ${host ? `<p class="rv-note">Adds as a step of <b>${esc(host.title)}</b></p>` : ""}
       ${dup ? `<p class="rv-warn">Already on your board</p>` : ""}
+      ${it.repeat ? `<p class="rv-note">↻ Repeats ${REPEATS[it.repeat].toLowerCase()}</p>` : ""}
       ${it.nextStep ? `<p class="rv-sub"><b>First step:</b> ${esc(it.nextStep)}</p>` : ""}
       ${it.steps.length ? `<div class="rv-stepsh">Steps, in order</div><ol class="rv-steps">${it.steps.map((st, j) => `<li data-j="${j}">
           <span class="stepno">${j + 1}</span>
@@ -1282,6 +1364,7 @@ document.addEventListener("submit", e => {
   if (!t) return;
   const next = { title: d.title.trim(), due: d.due||"", priority: d.priority, estimate: Number(d.estimate)||0,
     waitingOn: (d.waitingOn||"").trim(), nextStep: (d.nextStep||"").trim(), notes: (d.notes||"").trim() };
+  if ("repeat" in d) next.repeat = REPEATS[d.repeat] ? d.repeat : "";
   const changed = Object.fromEntries(Object.entries(next).filter(([k,v]) => v !== (t[k] ?? (k === "estimate" ? 0 : ""))));
   if (!Object.keys(changed).length) return flash("#boardMsg", "No changes to save.");
   patch(t.id, changed).then(() => flash("#boardMsg", `Saved "${t.title}".`));
@@ -1312,7 +1395,7 @@ function chatTools(actions){
   const find = id => { const t = state.tasks.find(x => x.id === String(id)); if (!t) throw new Error("No task with id " + id); return t; };
   return [
     { name: "add_task", description: "Add a new task to the person's list. Returns the new task id. Check the task list first: never add something that is already there.",
-      inputSchema: { type:"object", properties: { title:{type:"string"}, tags:{type:"array",items:{type:"string"},description:"project names; reuse existing ones"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"}, parentId:{type:"string",description:"id of the main task when this is one step of it"} }, required:["title"] },
+      inputSchema: { type:"object", properties: { title:{type:"string"}, tags:{type:"array",items:{type:"string"},description:"project names; reuse existing ones"}, priority:{type:"string",enum:["high","med","low"]}, due:{type:"string",description:"YYYY-MM-DD or empty"}, estimate:{type:"number",description:"minutes"}, nextStep:{type:"string"}, notes:{type:"string"}, parentId:{type:"string",description:"id of the main task when this is one step of it"}, repeat:{type:"string",enum:["","daily","weekdays","weekly","monthly"],description:"only if it recurs"} }, required:["title"] },
       async execute(i){ const r = i.parentId && byId(String(i.parentId)) ? await addStep(String(i.parentId), String(i.title), i) : await addTask(i);
         if (r.dup) return { id: r.id, note: "Already on the board with this id; not added again. Use update_task if something changed." };
         actions.push("Added: " + String(i.title)); renderTalk(state.pendingTalk); return { id: r.id }; } },
