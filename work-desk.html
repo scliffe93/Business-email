@@ -243,6 +243,22 @@ button.small{padding:5px 11px;font-size:.82rem}
 .rv-foot .primary{min-width:150px}
 @media (max-width:560px){#review{width:100%;max-height:92vh;border-radius:18px 18px 0 0;margin-bottom:0}.rv-meta{grid-template-columns:1fr 1fr}.rv-meta label:last-child{grid-column:1 / -1}.rv-steps li{grid-template-columns:auto minmax(0,1fr) auto}.rv-steps li input[type=date]{grid-column:2}}
 
+/* radar */
+.radar{padding:18px;display:flex;flex-direction:column;gap:12px}
+.rad-sum{margin:0;font-size:.92rem}
+.rad-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px}
+.rad-job{display:flex;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.rad-job:first-child{border-top:none}
+.rad-main{flex:1;min-width:0}
+.rad-title{font-weight:600}
+.rad-title a,.rad-news a{color:var(--accent);text-decoration:none}
+.rad-title a:hover,.rad-news a:hover{text-decoration:underline}
+.rad-meta{font-size:.8rem;color:var(--muted)}
+.rad-why{font-size:.8rem;color:var(--ink);margin-top:2px}
+.rad-news{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.88rem}
+.views{overflow-x:auto}
+.view-tab{white-space:nowrap}
+
 /* weekly reports */
 .reports{padding:18px;display:flex;flex-direction:column;gap:14px}
 .rep-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -489,6 +505,7 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
     <button role="tab" class="view-tab" data-view="add" aria-controls="view-add">+ Add</button>
     <button role="tab" class="view-tab" data-view="tasks" aria-controls="view-tasks">Tasks <span class="tab-n" id="vtOpen"></span></button>
     <button role="tab" class="view-tab" data-view="reports" aria-controls="view-reports">Reports</button>
+    <button role="tab" class="view-tab" data-view="radar" aria-controls="view-radar">Radar <span class="tab-n" id="vtRadar" hidden></span></button>
   </nav>
 
   <div class="view" id="view-add" role="tabpanel" hidden>
@@ -541,6 +558,13 @@ mark{background:var(--sun-soft);color:inherit;border-radius:3px;padding:0 1px}
       <div class="tabs" id="tabs" role="tablist" aria-label="Filter tasks"></div>
       <div class="projbar" id="projbar" aria-label="Filter by project"></div>
       <div class="board" id="board"></div>
+    </section>
+  </div>
+
+  <div class="view" id="view-radar" role="tabpanel" hidden>
+    <section class="card radar" aria-labelledby="radH">
+      <div class="rep-top"><h2 id="radH">Industry radar</h2><span class="dim" id="radWhen"></span></div>
+      <div id="radBody"><p class="dim">No radar yet. It updates Mon and Thu.</p></div>
     </section>
   </div>
 
@@ -1702,8 +1726,44 @@ document.addEventListener("click", async e => {
   setTimeout(() => b.textContent = label, 3000);
 });
 
+/* ---------- industry radar: news + jobs, refreshed by a scheduled run ---------- */
+state.radar = [];
+const safeUrl = u => /^https:\/\//.test(u || "") ? u : "";
+function renderRadar(){
+  const cur = state.radar[0]; if (!cur) return;
+  const prevUrls = new Set((state.radar[1]?.jobs || []).map(j => j.url));
+  const isNew = j => state.radar.length > 1 && !prevUrls.has(j.url);
+  const newN = (cur.jobs || []).filter(isNew).length;
+  $("#vtRadar").hidden = !newN; $("#vtRadar").textContent = newN;
+  $("#radWhen").textContent = "Updated " + fmtD(cur.date);
+  const link = (u, text) => safeUrl(u) ? `<a href="${esc(safeUrl(u))}" target="_blank" rel="noopener">${text}</a>` : text;
+  const jobs = cur.jobs || [], news = cur.news || [];
+  $("#radBody").innerHTML =
+    (cur.summary ? `<p class="rad-sum">${esc(cur.summary)}</p>` : "") +
+    `<h3 class="label">Jobs and freelance <span class="tab-n">${jobs.length}</span></h3>` +
+    (jobs.length ? `<div class="rad-list">${jobs.map((j, i) => `<div class="rad-job">
+        <div class="rad-main">
+          <div class="rad-title">${link(j.url, esc(j.title))}${isNew(j) ? ` <span class="chip sun">New</span>` : ""}</div>
+          <div class="rad-meta">${[j.org, j.location, j.type, j.pay].filter(Boolean).map(esc).join(" · ")}</div>
+          ${j.why ? `<div class="rad-why">${esc(j.why)}</div>` : ""}
+          ${j.closes ? `<div class="rad-why">Closes ${esc(j.closes)}</div>` : ""}
+        </div>
+        ${state.canWrite ? `<button type="button" class="small" data-radtask="${i}">+ Task</button>` : ""}
+      </div>`).join("")}</div>` : `<p class="dim">Nothing new that fits.</p>`) +
+    `<h3 class="label">News</h3>` +
+    (news.length ? `<ul class="rad-news">${news.map(n => `<li>${link(n.url, `<b>${esc(n.title)}</b>`)}${n.summary ? ` ${esc(n.summary)}` : ""}${n.source ? ` <span class="dim">(${esc(n.source)})</span>` : ""}</li>`).join("")}</ul>` : `<p class="dim">No news this time.</p>`) +
+    (cur.note ? `<p class="dim">${esc(cur.note)}</p>` : "");
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-radtask]"); if (!b) return;
+  const j = state.radar[0]?.jobs?.[Number(b.dataset.radtask)]; if (!j) return;
+  const r = await addTask({ title: `Look at: ${j.title}${j.org ? " (" + j.org + ")" : ""}`, tags: ["Career"], priority: "med",
+    notes: [j.url, j.closes ? "Closes " + j.closes : ""].filter(Boolean).join("\n"), nextStep: "Read the advert and decide" });
+  b.textContent = r.dup ? "On board" : "Added"; b.disabled = true;
+});
+
 /* ---------- sections (Add / Tasks / Reports) ---------- */
-const VIEWS = ["add", "tasks", "reports"];
+const VIEWS = ["add", "tasks", "reports", "radar"];
 function showView(v, push){
   if (!VIEWS.includes(v)) v = "tasks";
   state.view = v;
@@ -1799,6 +1859,7 @@ render(); renderTalk(); renderReports();
     render(); renderReports();
   }, err => { clearTimeout(timer); $("#conn").textContent = "Lost connection to your tasks. Reload the page to reconnect."; });
   db.doc("meta/plan").onSnapshot(s => { state.plan = s.exists ? s.data() : null; render(); }, () => {});
+  db.collection("radar").orderBy("date", "desc").limit(6).onSnapshot(snap => { state.radar = snap.docs.map(d => d.data()); renderRadar(); }, () => {});
   db.doc("meta/reportPrefs").onSnapshot(d => { if (d.exists) { state.repPrefs = { ...state.repPrefs, ...d.data() }; syncPrefsInputs(); } }, () => {});
   db.collection("reports").orderBy("week", "desc").limit(26).onSnapshot(snap => { state.reports = snap.docs.map(d => d.data()); renderReports(); }, () => {});
   db.doc("meta/status").onSnapshot(s => { state.status = s.exists ? s.data() : null; renderTalk(state.pendingTalk); }, () => {});
